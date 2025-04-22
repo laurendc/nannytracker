@@ -1,6 +1,6 @@
 # Nanny Mileage Tracker
 
-A simple Terminal User Interface (TUI) application to track nanny mileage and calculate reimbursement at $0.70 per mile.
+A simple Terminal User Interface (TUI) application to track nanny mileage and calculate reimbursement at $0.70 per mile. NOTE: THIS IS VERY MUCH A WORK IN PROGRESS.
 
 ## Features
 
