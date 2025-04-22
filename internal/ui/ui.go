@@ -1,12 +1,14 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lauren/nannytracker/internal/maps"
 	"github.com/lauren/nannytracker/internal/model"
 	"github.com/lauren/nannytracker/internal/storage"
 )
@@ -20,9 +22,10 @@ type Model struct {
 	Err         error
 	Storage     storage.Storage
 	RatePerMile float64
+	MapsClient  maps.DistanceCalculator
 }
 
-// New creates a new UI model
+// New creates a new UI model with a mock maps client (for backward compatibility)
 func New(storage storage.Storage, ratePerMile float64) (*Model, error) {
 	trips, err := storage.LoadTrips()
 	if err != nil {
@@ -42,6 +45,31 @@ func New(storage storage.Storage, ratePerMile float64) (*Model, error) {
 		Mode:        "origin",
 		Storage:     storage,
 		RatePerMile: ratePerMile,
+		MapsClient:  maps.NewMockClient(), // Use mock client by default
+	}, nil
+}
+
+// NewWithClient creates a new UI model with a provided maps client (useful for testing)
+func NewWithClient(storage storage.Storage, ratePerMile float64, mapsClient maps.DistanceCalculator) (*Model, error) {
+	trips, err := storage.LoadTrips()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load trips: %w", err)
+	}
+
+	ti := textinput.New()
+	ti.Placeholder = "Enter address..."
+	ti.Focus()
+	ti.CharLimit = 156
+	ti.Width = 50
+
+	return &Model{
+		TextInput:   ti,
+		Trips:       trips,
+		CurrentTrip: model.Trip{},
+		Mode:        "origin",
+		Storage:     storage,
+		RatePerMile: ratePerMile,
+		MapsClient:  mapsClient,
 	}, nil
 }
 
@@ -63,7 +91,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.TextInput.Placeholder = "Enter destination address..."
 			} else if m.Mode == "destination" {
 				m.CurrentTrip.Destination = m.TextInput.Value()
-				m.CurrentTrip.Miles = 10.0 // Placeholder value
+
+				// Calculate distance using Google Maps API
+				distance, err := m.MapsClient.CalculateDistance(context.Background(), m.CurrentTrip.Origin, m.CurrentTrip.Destination)
+				if err != nil {
+					m.Err = fmt.Errorf("failed to calculate distance: %w", err)
+					return m, cmd
+				}
+				m.CurrentTrip.Miles = distance
+
 				m.Trips = append(m.Trips, m.CurrentTrip)
 				if err := m.Storage.SaveTrips(m.Trips); err != nil {
 					m.Err = err

@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/lauren/nannytracker/internal/maps"
 	"github.com/lauren/nannytracker/internal/model"
 	"github.com/lauren/nannytracker/internal/storage"
 	"github.com/lauren/nannytracker/internal/ui"
@@ -49,8 +50,9 @@ func TestTripCreation(t *testing.T) {
 	}
 
 	store := storage.New(cfg.DataPath())
+	mockClient := maps.NewMockClient()
 
-	uiModel, err := ui.New(store, cfg.RatePerMile)
+	uiModel, err := ui.NewWithClient(store, cfg.RatePerMile, mockClient)
 	if err != nil {
 		t.Fatalf("Failed to create UI model: %v", err)
 	}
@@ -123,8 +125,9 @@ func TestTotalMilesCalculation(t *testing.T) {
 	}
 
 	store := storage.New(cfg.DataPath())
+	mockClient := maps.NewMockClient()
 
-	uiModel, err := ui.New(store, cfg.RatePerMile)
+	uiModel, err := ui.NewWithClient(store, cfg.RatePerMile, mockClient)
 	if err != nil {
 		t.Fatalf("Failed to create UI model: %v", err)
 	}
@@ -237,8 +240,9 @@ func TestAddingTrip(t *testing.T) {
 	}
 
 	store := storage.New(cfg.DataPath())
+	mockClient := maps.NewMockClient()
 
-	uiModel, err := ui.New(store, cfg.RatePerMile)
+	uiModel, err := ui.NewWithClient(store, cfg.RatePerMile, mockClient)
 	if err != nil {
 		t.Fatalf("Failed to create UI model: %v", err)
 	}
@@ -252,21 +256,11 @@ func TestAddingTrip(t *testing.T) {
 
 	uiModel.AddTrip(trip)
 
-	// Verify trip was added
 	if len(uiModel.Trips) != 1 {
 		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
 	}
 
-	// Test calculating total miles
-	totalMiles := uiModel.CalculateTotalMiles(uiModel.Trips)
-	if totalMiles != 10.5 {
-		t.Errorf("Expected total miles to be 10.5, got %f", totalMiles)
-	}
-
-	// Test calculating reimbursement
-	reimbursement := uiModel.CalculateReimbursement(uiModel.Trips, cfg.RatePerMile)
-	expectedReimbursement := 10.5 * 0.655
-	if reimbursement != expectedReimbursement {
-		t.Errorf("Expected reimbursement to be %f, got %f", expectedReimbursement, reimbursement)
+	if uiModel.Trips[0] != trip {
+		t.Errorf("Trip data doesn't match. Expected %+v, got %+v", trip, uiModel.Trips[0])
 	}
 }

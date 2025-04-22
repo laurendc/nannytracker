@@ -1,10 +1,26 @@
 package model
 
+import "errors"
+
 // Trip represents a single trip with origin, destination, and mileage
 type Trip struct {
 	Origin      string  `json:"origin"`
 	Destination string  `json:"destination"`
 	Miles       float64 `json:"miles"`
+}
+
+// Validate checks if a trip is valid
+func (t Trip) Validate() error {
+	if t.Origin == "" {
+		return errors.New("origin cannot be empty")
+	}
+	if t.Destination == "" {
+		return errors.New("destination cannot be empty")
+	}
+	if t.Miles <= 0 {
+		return errors.New("miles must be greater than 0")
+	}
+	return nil
 }
 
 // CalculateTotalMiles returns the sum of miles for all trips
