@@ -6,12 +6,13 @@ A simple Terminal User Interface (TUI) application to track nanny mileage and ca
 
 - Enter origin and destination addresses
 - Accurate distance calculation using Google Maps Distance Matrix API
-- Track multiple trips
+- Track multiple trips with dates
 - Calculate total mileage and reimbursement
 - Simple and intuitive interface
 - Automatic trip saving (trips are saved in ~/.nannytracker/trips.json)
 - Configurable reimbursement rate (defaults to $0.655 per mile)
-- Input validation for addresses and trip data
+- Input validation for addresses, trip data, and dates
+- Date tracking for each trip (YYYY-MM-DD format)
 
 ## Installation
 
@@ -30,9 +31,10 @@ A simple Terminal User Interface (TUI) application to track nanny mileage and ca
 1. Launch the application with `go run main.go`
 2. Enter the origin address and press Enter
 3. Enter the destination address and press Enter
-4. The application will calculate the actual distance using Google Maps
-5. The trip will be saved automatically and added to the history
-6. Press Ctrl+C to quit the application
+4. Enter the trip date in YYYY-MM-DD format and press Enter
+5. The application will calculate the actual distance using Google Maps
+6. The trip will be saved automatically and added to the history
+7. Press Ctrl+C to quit the application
 
 ## Data Storage
 
@@ -51,7 +53,7 @@ You can set these either in your environment or in a `.env` file in the project 
 ## Future Improvements
 
 - Add ability to edit/delete trips
-- Add date tracking for trips
 - Add export functionality for reimbursement reports
 - Add support for recurring trips
-- Add monthly/weekly summaries 
+- Add monthly/weekly summaries
+- Add date range filtering for trips 
