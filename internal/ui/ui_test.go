@@ -42,13 +42,22 @@ func TestTripCreation(t *testing.T) {
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	uiModel = updatedModel.(*Model)
 
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date', got '%s'", uiModel.Mode)
+	}
+
+	// Test date input
+	uiModel.TextInput.SetValue("2024-03-20")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
 	if len(uiModel.Trips) != 1 {
 		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
 	}
 
-	if uiModel.Trips[0].Origin != "123 Main St" || uiModel.Trips[0].Destination != "456 Oak Ave" {
-		t.Errorf("Trip data doesn't match input. Got origin: %s, destination: %s",
-			uiModel.Trips[0].Origin, uiModel.Trips[0].Destination)
+	if uiModel.Trips[0].Origin != "123 Main St" || uiModel.Trips[0].Destination != "456 Oak Ave" || uiModel.Trips[0].Date != "2024-03-20" {
+		t.Errorf("Trip data doesn't match input. Got origin: %s, destination: %s, date: %s",
+			uiModel.Trips[0].Origin, uiModel.Trips[0].Destination, uiModel.Trips[0].Date)
 	}
 }
 
@@ -61,6 +70,7 @@ func TestAddingTrip(t *testing.T) {
 		Origin:      "Home",
 		Destination: "Work",
 		Miles:       5.0,
+		Date:        "2024-03-20",
 	}
 
 	uiModel.AddTrip(trip)
@@ -69,9 +79,9 @@ func TestAddingTrip(t *testing.T) {
 		t.Errorf("Expected 1 trip after adding, got %d", len(uiModel.Trips))
 	}
 
-	if uiModel.Trips[0].Origin != "Home" || uiModel.Trips[0].Destination != "Work" {
-		t.Errorf("Added trip data doesn't match. Got origin: %s, destination: %s",
-			uiModel.Trips[0].Origin, uiModel.Trips[0].Destination)
+	if uiModel.Trips[0].Origin != "Home" || uiModel.Trips[0].Destination != "Work" || uiModel.Trips[0].Date != "2024-03-20" {
+		t.Errorf("Added trip data doesn't match. Got origin: %s, destination: %s, date: %s",
+			uiModel.Trips[0].Origin, uiModel.Trips[0].Destination, uiModel.Trips[0].Date)
 	}
 }
 
@@ -93,8 +103,17 @@ func TestUIStateTransitions(t *testing.T) {
 		t.Errorf("Expected mode to be 'destination' after origin input, got '%s'", uiModel.Mode)
 	}
 
-	// Test transition back to origin mode after trip completion
+	// Test transition to date mode
 	uiModel.TextInput.SetValue("456 Oak Ave")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date' after destination input, got '%s'", uiModel.Mode)
+	}
+
+	// Test transition back to origin mode after trip completion
+	uiModel.TextInput.SetValue("2024-03-20")
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	uiModel = updatedModel.(*Model)
 
