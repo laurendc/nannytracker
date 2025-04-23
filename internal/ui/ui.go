@@ -18,7 +18,7 @@ type Model struct {
 	TextInput   textinput.Model
 	Trips       []model.Trip
 	CurrentTrip model.Trip
-	Mode        string
+	Mode        string // "origin", "destination", or "date"
 	Err         error
 	Storage     storage.Storage
 	RatePerMile float64
@@ -91,6 +91,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.TextInput.Placeholder = "Enter destination address..."
 			} else if m.Mode == "destination" {
 				m.CurrentTrip.Destination = m.TextInput.Value()
+				m.TextInput.Reset()
+				m.Mode = "date"
+				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+			} else if m.Mode == "date" {
+				m.CurrentTrip.Date = m.TextInput.Value()
 
 				// Calculate distance using Google Maps API
 				distance, err := m.MapsClient.CalculateDistance(context.Background(), m.CurrentTrip.Origin, m.CurrentTrip.Destination)
@@ -142,12 +147,15 @@ func (m *Model) View() string {
 	if m.CurrentTrip.Destination != "" {
 		s.WriteString(fmt.Sprintf("Destination: %s\n", m.CurrentTrip.Destination))
 	}
+	if m.CurrentTrip.Date != "" {
+		s.WriteString(fmt.Sprintf("Date: %s\n", m.CurrentTrip.Date))
+	}
 
 	// Trip history
 	if len(m.Trips) > 0 {
 		s.WriteString("\nTrip History:\n")
 		for i, t := range m.Trips {
-			s.WriteString(fmt.Sprintf("%d. %s → %s (%.2f miles)\n", i+1, t.Origin, t.Destination, t.Miles))
+			s.WriteString(fmt.Sprintf("%d. %s → %s (%.2f miles) - %s\n", i+1, t.Origin, t.Destination, t.Miles, t.Date))
 		}
 	}
 
