@@ -71,9 +71,17 @@ func TestTripCreation(t *testing.T) {
 		t.Errorf("Expected mode to be 'destination', got '%s'", uiModel.Mode)
 	}
 
-	// Test destination input - first update the text input
+	// Test destination input
 	uiModel.TextInput.SetValue("456 Oak Ave")
-	// Then send the enter key
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*ui.Model)
+
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date', got '%s'", uiModel.Mode)
+	}
+
+	// Test date input
+	uiModel.TextInput.SetValue("2024-03-20")
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	uiModel = updatedModel.(*ui.Model)
 
@@ -81,9 +89,9 @@ func TestTripCreation(t *testing.T) {
 		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
 	}
 
-	if uiModel.Trips[0].Origin != "123 Main St" || uiModel.Trips[0].Destination != "456 Oak Ave" {
-		t.Errorf("Trip data doesn't match input. Got origin: %s, destination: %s",
-			uiModel.Trips[0].Origin, uiModel.Trips[0].Destination)
+	if uiModel.Trips[0].Origin != "123 Main St" || uiModel.Trips[0].Destination != "456 Oak Ave" || uiModel.Trips[0].Date != "2024-03-20" {
+		t.Errorf("Trip data doesn't match input. Got origin: %s, destination: %s, date: %s",
+			uiModel.Trips[0].Origin, uiModel.Trips[0].Destination, uiModel.Trips[0].Date)
 	}
 
 	// Verify saved trips
@@ -96,7 +104,7 @@ func TestTripCreation(t *testing.T) {
 		t.Errorf("Expected 1 saved trip, got %d", len(savedTrips))
 	}
 
-	if savedTrips[0].Origin != "123 Main St" || savedTrips[0].Destination != "456 Oak Ave" {
+	if savedTrips[0].Origin != "123 Main St" || savedTrips[0].Destination != "456 Oak Ave" || savedTrips[0].Date != "2024-03-20" {
 		t.Errorf("Saved trip data doesn't match input")
 	}
 
@@ -134,9 +142,9 @@ func TestTotalMilesCalculation(t *testing.T) {
 
 	// Add multiple trips
 	trips := []model.Trip{
-		{Origin: "A", Destination: "B", Miles: 10.0},
-		{Origin: "C", Destination: "D", Miles: 15.0},
-		{Origin: "E", Destination: "F", Miles: 5.0},
+		{Origin: "A", Destination: "B", Miles: 10.0, Date: "2024-03-20"},
+		{Origin: "C", Destination: "D", Miles: 15.0, Date: "2024-03-21"},
+		{Origin: "E", Destination: "F", Miles: 5.0, Date: "2024-03-22"},
 	}
 
 	for _, trip := range trips {
