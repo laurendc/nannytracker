@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	DefaultRatePerMile = 0.655
+	//
+	DefaultRatePerMile = 0.70
 	DefaultDataFile    = "trips.json"
 )
 

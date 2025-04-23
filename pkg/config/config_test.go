@@ -32,7 +32,7 @@ func TestNew(t *testing.T) {
 	// Set environment variables for testing
 	os.Setenv("NANNYTRACKER_DATA_DIR", filepath.Join(tempDir, ".nannytracker"))
 	os.Setenv("NANNYTRACKER_DATA_FILE", "test_trips.json")
-	os.Setenv("NANNYTRACKER_RATE_PER_MILE", "0.655")
+	os.Setenv("NANNYTRACKER_RATE_PER_MILE", "0.70")
 
 	cfg, err := New()
 	if err != nil {
@@ -48,8 +48,8 @@ func TestNew(t *testing.T) {
 		t.Errorf("Expected DataFile to be test_trips.json, got %s", cfg.DataFile)
 	}
 
-	if cfg.RatePerMile != 0.655 {
-		t.Errorf("Expected RatePerMile to be 0.655, got %f", cfg.RatePerMile)
+	if cfg.RatePerMile != 0.70 {
+		t.Errorf("Expected RatePerMile to be 0.70, got %f", cfg.RatePerMile)
 	}
 }
 
@@ -94,7 +94,7 @@ func TestDefaultConfig(t *testing.T) {
 		t.Errorf("Expected default DataFile to be trips.json, got %s", cfg.DataFile)
 	}
 
-	if cfg.RatePerMile != 0.655 {
-		t.Errorf("Expected default RatePerMile to be 0.655, got %f", cfg.RatePerMile)
+	if cfg.RatePerMile != 0.70 {
+		t.Errorf("Expected default RatePerMile to be 0.70, got %f", cfg.RatePerMile)
 	}
 }
