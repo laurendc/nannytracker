@@ -126,62 +126,86 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) View() string {
 	var s strings.Builder
 
-	// Title
-	title := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#FF5F87")).
-		Render("Nanny Mileage Tracker")
+	// Title with custom style
+	title := titleStyle.Render("Nanny Mileage Tracker")
 	s.WriteString(title + "\n\n")
 
-	// Current mode
-	modeText := fmt.Sprintf("Current mode: %s", m.Mode)
+	// Mode indicator with custom style
+	modeText := modeStyle.Render(fmt.Sprintf("Current mode: %s", m.Mode))
 	s.WriteString(modeText + "\n\n")
 
-	// Input field
-	s.WriteString(m.TextInput.View() + "\n\n")
+	// Input field with custom style
+	input := inputStyle.Render(m.TextInput.View())
+	s.WriteString(input + "\n\n")
 
 	// Current trip info
 	if m.CurrentTrip.Origin != "" {
-		s.WriteString(fmt.Sprintf("Origin: %s\n", m.CurrentTrip.Origin))
+		s.WriteString(tripStyle.Render(fmt.Sprintf("Origin: %s\n", m.CurrentTrip.Origin)))
 	}
 	if m.CurrentTrip.Destination != "" {
-		s.WriteString(fmt.Sprintf("Destination: %s\n", m.CurrentTrip.Destination))
+		s.WriteString(tripStyle.Render(fmt.Sprintf("Destination: %s\n", m.CurrentTrip.Destination)))
 	}
 	if m.CurrentTrip.Date != "" {
-		s.WriteString(fmt.Sprintf("Date: %s\n", m.CurrentTrip.Date))
+		s.WriteString(tripStyle.Render(fmt.Sprintf("Date: %s\n", m.CurrentTrip.Date)))
 	}
 
 	// Trip history
 	if len(m.Trips) > 0 {
-		s.WriteString("\nTrip History:\n")
+		s.WriteString("\n" + titleStyle.Render("Trip History") + "\n")
+
+		// Create a list container
+		listContainer := lipgloss.NewStyle().
+			PaddingLeft(2).
+			BorderLeft(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(accentColor)
+
+		var tripList strings.Builder
 		for i, t := range m.Trips {
-			s.WriteString(fmt.Sprintf("%d. %s → %s (%.2f miles) - %s\n", i+1, t.Origin, t.Destination, t.Miles, t.Date))
+			// Format each trip with consistent spacing
+			trip := fmt.Sprintf("%d. %s → %s (%.2f miles) - %s",
+				i+1, t.Origin, t.Destination, t.Miles, t.Date)
+			tripList.WriteString(tripStyle.Render(trip) + "\n")
 		}
+
+		// Add the formatted list to the main view
+		s.WriteString(listContainer.Render(tripList.String()))
 	}
 
 	// Total mileage and reimbursement
 	if len(m.Trips) > 0 {
 		totalMiles := model.CalculateTotalMiles(m.Trips)
 		totalReimbursement := model.CalculateReimbursement(m.Trips, m.RatePerMile)
-		s.WriteString(fmt.Sprintf("\nTotal Miles: %.2f\n", totalMiles))
-		s.WriteString(fmt.Sprintf("Total Reimbursement: $%.2f\n", totalReimbursement))
+
+		// Add extra spacing before totals section
+		s.WriteString("\n\n" + titleStyle.Render("Totals") + "\n")
+
+		// Create a totals container with similar styling to trip list
+		totalsContainer := lipgloss.NewStyle().
+			PaddingLeft(2).
+			BorderLeft(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(accentColor)
+
+		var totalsList strings.Builder
+		// Format totals to match trip history style with consistent spacing
+		totalsList.WriteString(fmt.Sprintf("1. Total Miles: %.2f miles\n", totalMiles))
+		totalsList.WriteString(fmt.Sprintf("2. Total Reimbursement: $%.2f", totalReimbursement))
+		s.WriteString(totalsContainer.Render(tripStyle.Render(totalsList.String())))
 	}
 
 	// Error message
 	if m.Err != nil {
-		errorStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF0000")).
-			Render(fmt.Sprintf("\nError: %v", m.Err))
-		s.WriteString(errorStyle)
+		errorMsg := errorStyle.Render(fmt.Sprintf("\n\nError: %v", m.Err))
+		s.WriteString(errorMsg)
 	}
 
 	// Help text
-	help := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#626262")).
-		Render("\nPress Ctrl+C to quit")
+	help := helpStyle.Render("\n\nPress Ctrl+C to quit")
 	s.WriteString(help)
 
-	return s.String()
+	// Wrap everything in a container
+	return containerStyle.Render(s.String())
 }
 
 // CalculateTotalMiles calculates the total miles for a list of trips
