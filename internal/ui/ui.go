@@ -18,58 +18,61 @@ type Model struct {
 	TextInput   textinput.Model
 	Trips       []model.Trip
 	CurrentTrip model.Trip
-	Mode        string // "origin", "destination", or "date"
+	Mode        string // "date", "origin", or "destination"
 	Err         error
 	Storage     storage.Storage
 	RatePerMile float64
 	MapsClient  maps.DistanceCalculator
+	Data        *model.StorageData
 }
 
 // New creates a new UI model with a mock maps client (for backward compatibility)
 func New(storage storage.Storage, ratePerMile float64) (*Model, error) {
-	trips, err := storage.LoadTrips()
+	data, err := storage.LoadData()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load trips: %w", err)
+		return nil, fmt.Errorf("failed to load data: %w", err)
 	}
 
 	ti := textinput.New()
-	ti.Placeholder = "Enter address..."
+	ti.Placeholder = "Enter date (YYYY-MM-DD)..."
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 50
 
 	return &Model{
 		TextInput:   ti,
-		Trips:       trips,
+		Trips:       data.Trips,
 		CurrentTrip: model.Trip{},
-		Mode:        "origin",
+		Mode:        "date",
 		Storage:     storage,
 		RatePerMile: ratePerMile,
-		MapsClient:  maps.NewMockClient(), // Use mock client by default
+		MapsClient:  maps.NewMockClient(),
+		Data:        data,
 	}, nil
 }
 
 // NewWithClient creates a new UI model with a provided maps client (useful for testing)
 func NewWithClient(storage storage.Storage, ratePerMile float64, mapsClient maps.DistanceCalculator) (*Model, error) {
-	trips, err := storage.LoadTrips()
+	data, err := storage.LoadData()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load trips: %w", err)
+		return nil, fmt.Errorf("failed to load data: %w", err)
 	}
 
 	ti := textinput.New()
-	ti.Placeholder = "Enter address..."
+	ti.Placeholder = "Enter date (YYYY-MM-DD)..."
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 50
 
 	return &Model{
 		TextInput:   ti,
-		Trips:       trips,
+		Trips:       data.Trips,
 		CurrentTrip: model.Trip{},
-		Mode:        "origin",
+		Mode:        "date",
 		Storage:     storage,
 		RatePerMile: ratePerMile,
 		MapsClient:  mapsClient,
+		Data:        data,
 	}, nil
 }
 
@@ -84,18 +87,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			if m.Mode == "origin" {
+			if m.Mode == "date" {
+				m.CurrentTrip.Date = m.TextInput.Value()
+				m.TextInput.Reset()
+				m.Mode = "origin"
+				m.TextInput.Placeholder = "Enter origin address..."
+			} else if m.Mode == "origin" {
 				m.CurrentTrip.Origin = m.TextInput.Value()
 				m.TextInput.Reset()
 				m.Mode = "destination"
 				m.TextInput.Placeholder = "Enter destination address..."
 			} else if m.Mode == "destination" {
 				m.CurrentTrip.Destination = m.TextInput.Value()
-				m.TextInput.Reset()
-				m.Mode = "date"
-				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
-			} else if m.Mode == "date" {
-				m.CurrentTrip.Date = m.TextInput.Value()
 
 				// Calculate distance using Google Maps API
 				distance, err := m.MapsClient.CalculateDistance(context.Background(), m.CurrentTrip.Origin, m.CurrentTrip.Destination)
@@ -106,13 +109,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.CurrentTrip.Miles = distance
 
 				m.Trips = append(m.Trips, m.CurrentTrip)
-				if err := m.Storage.SaveTrips(m.Trips); err != nil {
+				m.Data.Trips = m.Trips
+				model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+				if err := m.Storage.SaveData(m.Data); err != nil {
 					m.Err = err
 				}
 				m.CurrentTrip = model.Trip{}
 				m.TextInput.Reset()
-				m.Mode = "origin"
-				m.TextInput.Placeholder = "Enter origin address..."
+				m.Mode = "date"
+				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
 			}
 		case tea.KeyCtrlC:
 			return m, tea.Quit
@@ -141,14 +146,24 @@ func (m *Model) View() string {
 	s.WriteString(m.TextInput.View() + "\n\n")
 
 	// Current trip info
+	if m.CurrentTrip.Date != "" {
+		s.WriteString(fmt.Sprintf("Date: %s\n", m.CurrentTrip.Date))
+	}
 	if m.CurrentTrip.Origin != "" {
 		s.WriteString(fmt.Sprintf("Origin: %s\n", m.CurrentTrip.Origin))
 	}
 	if m.CurrentTrip.Destination != "" {
 		s.WriteString(fmt.Sprintf("Destination: %s\n", m.CurrentTrip.Destination))
 	}
-	if m.CurrentTrip.Date != "" {
-		s.WriteString(fmt.Sprintf("Date: %s\n", m.CurrentTrip.Date))
+
+	// Weekly summaries
+	if len(m.Data.WeeklySummaries) > 0 {
+		s.WriteString("\nWeekly Summaries:\n")
+		for _, summary := range m.Data.WeeklySummaries {
+			s.WriteString(fmt.Sprintf("Week of %s to %s:\n", summary.WeekStart, summary.WeekEnd))
+			s.WriteString(fmt.Sprintf("  Total Miles: %.2f\n", summary.TotalMiles))
+			s.WriteString(fmt.Sprintf("  Amount Owed: $%.2f\n\n", summary.TotalAmount))
+		}
 	}
 
 	// Trip history
@@ -194,7 +209,12 @@ func (m *Model) CalculateReimbursement(trips []model.Trip, ratePerMile float64) 
 	return model.CalculateReimbursement(trips, ratePerMile)
 }
 
-// AddTrip adds a new trip to the model's trips list
+// AddTrip adds a new trip to the model's trips list and updates weekly summaries
 func (m *Model) AddTrip(trip model.Trip) {
 	m.Trips = append(m.Trips, trip)
+	m.Data.Trips = m.Trips
+	model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+	if err := m.Storage.SaveData(m.Data); err != nil {
+		m.Err = err
+	}
 }

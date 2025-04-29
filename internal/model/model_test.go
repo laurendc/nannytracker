@@ -196,3 +196,85 @@ func TestTripDateFiltering(t *testing.T) {
 		t.Errorf("Expected trip date to be %s, got %s", targetDate, filteredTrips[0].Date)
 	}
 }
+
+func TestCalculateWeeklySummaries(t *testing.T) {
+	tests := []struct {
+		name        string
+		trips       []Trip
+		ratePerMile float64
+		want        []WeeklySummary
+	}{
+		{
+			name:        "empty trips",
+			trips:       []Trip{},
+			ratePerMile: 0.655,
+			want:        nil,
+		},
+		{
+			name: "single week",
+			trips: []Trip{
+				{Date: "2024-03-17", Miles: 10.0}, // Sunday
+				{Date: "2024-03-18", Miles: 15.0}, // Monday
+				{Date: "2024-03-19", Miles: 20.0}, // Tuesday
+			},
+			ratePerMile: 0.655,
+			want: []WeeklySummary{
+				{
+					WeekStart:   "2024-03-17",
+					WeekEnd:     "2024-03-23",
+					TotalMiles:  45.0,
+					TotalAmount: 29.475,
+				},
+			},
+		},
+		{
+			name: "multiple weeks",
+			trips: []Trip{
+				{Date: "2024-03-17", Miles: 10.0}, // Week 1
+				{Date: "2024-03-18", Miles: 15.0}, // Week 1
+				{Date: "2024-03-24", Miles: 20.0}, // Week 2
+				{Date: "2024-03-25", Miles: 25.0}, // Week 2
+			},
+			ratePerMile: 0.655,
+			want: []WeeklySummary{
+				{
+					WeekStart:   "2024-03-17",
+					WeekEnd:     "2024-03-23",
+					TotalMiles:  25.0,
+					TotalAmount: 16.375,
+				},
+				{
+					WeekStart:   "2024-03-24",
+					WeekEnd:     "2024-03-30",
+					TotalMiles:  45.0,
+					TotalAmount: 29.475,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CalculateWeeklySummaries(tt.trips, tt.ratePerMile)
+			if len(got) != len(tt.want) {
+				t.Errorf("CalculateWeeklySummaries() got %d summaries, want %d", len(got), len(tt.want))
+				return
+			}
+
+			for i, summary := range got {
+				if summary.WeekStart != tt.want[i].WeekStart {
+					t.Errorf("WeekStart = %v, want %v", summary.WeekStart, tt.want[i].WeekStart)
+				}
+				if summary.WeekEnd != tt.want[i].WeekEnd {
+					t.Errorf("WeekEnd = %v, want %v", summary.WeekEnd, tt.want[i].WeekEnd)
+				}
+				if summary.TotalMiles != tt.want[i].TotalMiles {
+					t.Errorf("TotalMiles = %v, want %v", summary.TotalMiles, tt.want[i].TotalMiles)
+				}
+				if summary.TotalAmount != tt.want[i].TotalAmount {
+					t.Errorf("TotalAmount = %v, want %v", summary.TotalAmount, tt.want[i].TotalAmount)
+				}
+			}
+		})
+	}
+}
