@@ -9,43 +9,50 @@ import (
 
 // Storage defines the interface for trip data persistence
 type Storage interface {
-	SaveTrips(trips []model.Trip) error
-	LoadTrips() ([]model.Trip, error)
+	SaveData(data *model.StorageData) error
+	LoadData() (*model.StorageData, error)
 }
 
-// FileStorage implements Storage using JSON files
+// FileStorage implements Storage using a JSON file
 type FileStorage struct {
 	filePath string
 }
 
+// New creates a new FileStorage instance
 func New(filePath string) *FileStorage {
 	return &FileStorage{
 		filePath: filePath,
 	}
 }
 
-func (s *FileStorage) SaveTrips(trips []model.Trip) error {
-	data, err := json.MarshalIndent(trips, "", "  ")
+// SaveData saves the complete data structure to the file
+func (s *FileStorage) SaveData(data *model.StorageData) error {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(s.filePath, data, 0644)
+	return os.WriteFile(s.filePath, jsonData, 0644)
 }
 
-func (s *FileStorage) LoadTrips() ([]model.Trip, error) {
-	data, err := os.ReadFile(s.filePath)
+// LoadData loads the complete data structure from the file
+func (s *FileStorage) LoadData() (*model.StorageData, error) {
+	data := &model.StorageData{
+		Trips:           make([]model.Trip, 0),
+		WeeklySummaries: make([]model.WeeklySummary, 0),
+	}
+
+	fileData, err := os.ReadFile(s.filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return []model.Trip{}, nil
+			return data, nil
 		}
 		return nil, err
 	}
 
-	var trips []model.Trip
-	if err := json.Unmarshal(data, &trips); err != nil {
+	if err := json.Unmarshal(fileData, data); err != nil {
 		return nil, err
 	}
 
-	return trips, nil
+	return data, nil
 }
