@@ -34,73 +34,97 @@ func setupTestEnv(t *testing.T) (string, func()) {
 }
 
 func TestStorage(t *testing.T) {
-	tmpDir, cleanup := setupTestEnv(t)
-	defer cleanup()
-
-	// Create storage
-	store := New(filepath.Join(tmpDir, ".nannytracker", "trips.json"))
-
-	// Test saving trips
-	trips := []model.Trip{
-		{Origin: "Home", Destination: "Work", Miles: 5.0},
-		{Origin: "Work", Destination: "Store", Miles: 2.5},
-	}
-
-	if err := store.SaveTrips(trips); err != nil {
-		t.Fatalf("Failed to save trips: %v", err)
-	}
-
-	// Verify file exists
-	dataPath := filepath.Join(tmpDir, ".nannytracker", "trips.json")
-	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
-		t.Errorf("Expected trips file to exist at %s", dataPath)
-	}
-
-	// Test loading trips
-	loadedTrips, err := store.LoadTrips()
+	// Create a temporary directory for testing
+	tmpDir, err := os.MkdirTemp("", "nannytracker-test")
 	if err != nil {
-		t.Fatalf("Failed to load trips: %v", err)
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create the storage file path
+	filePath := filepath.Join(tmpDir, "trips.json")
+
+	// Create a new storage instance
+	store := New(filePath)
+
+	// Test saving and loading data
+	data := &model.StorageData{
+		Trips: []model.Trip{
+			{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0},
+			{Date: "2024-03-21", Origin: "Work", Destination: "Home", Miles: 10.0},
+		},
+		WeeklySummaries: []model.WeeklySummary{
+			{
+				WeekStart:   "2024-03-17",
+				WeekEnd:     "2024-03-23",
+				TotalMiles:  20.0,
+				TotalAmount: 13.10,
+			},
+		},
 	}
 
-	if len(loadedTrips) != len(trips) {
-		t.Errorf("Expected %d trips, got %d", len(trips), len(loadedTrips))
+	// Save the data
+	if err := store.SaveData(data); err != nil {
+		t.Fatalf("Failed to save data: %v", err)
+	}
+
+	// Load the data
+	loadedData, err := store.LoadData()
+	if err != nil {
+		t.Fatalf("Failed to load data: %v", err)
+	}
+
+	// Verify the loaded data
+	if len(loadedData.Trips) != len(data.Trips) {
+		t.Errorf("Expected %d trips, got %d", len(data.Trips), len(loadedData.Trips))
+	}
+
+	if len(loadedData.WeeklySummaries) != len(data.WeeklySummaries) {
+		t.Errorf("Expected %d weekly summaries, got %d", len(data.WeeklySummaries), len(loadedData.WeeklySummaries))
 	}
 
 	// Verify trip data
-	for i, trip := range trips {
-		if loadedTrips[i].Origin != trip.Origin {
-			t.Errorf("Trip %d: expected origin %s, got %s", i, trip.Origin, loadedTrips[i].Origin)
+	for i, trip := range data.Trips {
+		if loadedData.Trips[i].Date != trip.Date {
+			t.Errorf("Trip %d: expected date %s, got %s", i, trip.Date, loadedData.Trips[i].Date)
 		}
-		if loadedTrips[i].Destination != trip.Destination {
-			t.Errorf("Trip %d: expected destination %s, got %s", i, trip.Destination, loadedTrips[i].Destination)
+		if loadedData.Trips[i].Origin != trip.Origin {
+			t.Errorf("Trip %d: expected origin %s, got %s", i, trip.Origin, loadedData.Trips[i].Origin)
 		}
-		if loadedTrips[i].Miles != trip.Miles {
-			t.Errorf("Trip %d: expected miles %.2f, got %.2f", i, trip.Miles, loadedTrips[i].Miles)
+		if loadedData.Trips[i].Destination != trip.Destination {
+			t.Errorf("Trip %d: expected destination %s, got %s", i, trip.Destination, loadedData.Trips[i].Destination)
+		}
+		if loadedData.Trips[i].Miles != trip.Miles {
+			t.Errorf("Trip %d: expected miles %.2f, got %.2f", i, trip.Miles, loadedData.Trips[i].Miles)
+		}
+	}
+
+	// Verify weekly summary data
+	for i, summary := range data.WeeklySummaries {
+		if loadedData.WeeklySummaries[i].WeekStart != summary.WeekStart {
+			t.Errorf("Summary %d: expected week start %s, got %s", i, summary.WeekStart, loadedData.WeeklySummaries[i].WeekStart)
+		}
+		if loadedData.WeeklySummaries[i].WeekEnd != summary.WeekEnd {
+			t.Errorf("Summary %d: expected week end %s, got %s", i, summary.WeekEnd, loadedData.WeeklySummaries[i].WeekEnd)
+		}
+		if loadedData.WeeklySummaries[i].TotalMiles != summary.TotalMiles {
+			t.Errorf("Summary %d: expected total miles %.2f, got %.2f", i, summary.TotalMiles, loadedData.WeeklySummaries[i].TotalMiles)
+		}
+		if loadedData.WeeklySummaries[i].TotalAmount != summary.TotalAmount {
+			t.Errorf("Summary %d: expected total amount %.2f, got %.2f", i, summary.TotalAmount, loadedData.WeeklySummaries[i].TotalAmount)
 		}
 	}
 
 	// Test loading from non-existent file
-	os.Remove(dataPath)
-	emptyTrips, err := store.LoadTrips()
+	os.Remove(filePath)
+	emptyData, err := store.LoadData()
 	if err != nil {
 		t.Fatalf("Failed to load from non-existent file: %v", err)
 	}
-	if len(emptyTrips) != 0 {
-		t.Errorf("Expected 0 trips from non-existent file, got %d", len(emptyTrips))
+	if len(emptyData.Trips) != 0 {
+		t.Errorf("Expected 0 trips from non-existent file, got %d", len(emptyData.Trips))
 	}
-
-	// Test saving to non-existent directory
-	os.RemoveAll(filepath.Join(tmpDir, ".nannytracker"))
-	// Create the directory again before saving
-	if err := os.MkdirAll(filepath.Join(tmpDir, ".nannytracker"), 0755); err != nil {
-		t.Fatalf("Failed to create directory: %v", err)
-	}
-	if err := store.SaveTrips(trips); err != nil {
-		t.Fatalf("Failed to save trips to new directory: %v", err)
-	}
-
-	// Verify file was created in new directory
-	if _, err := os.Stat(dataPath); os.IsNotExist(err) {
-		t.Errorf("Expected trips file to be created at %s", dataPath)
+	if len(emptyData.WeeklySummaries) != 0 {
+		t.Errorf("Expected 0 weekly summaries from non-existent file, got %d", len(emptyData.WeeklySummaries))
 	}
 }
