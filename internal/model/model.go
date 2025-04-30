@@ -124,3 +124,24 @@ type StorageData struct {
 func CalculateAndUpdateWeeklySummaries(data *StorageData, ratePerMile float64) {
 	data.WeeklySummaries = CalculateWeeklySummaries(data.Trips, ratePerMile)
 }
+
+// EditTrip updates a trip at the specified index
+func (d *StorageData) EditTrip(index int, newTrip Trip) error {
+	if index < 0 || index >= len(d.Trips) {
+		return errors.New("invalid trip index")
+	}
+	if err := newTrip.Validate(); err != nil {
+		return err
+	}
+	d.Trips[index] = newTrip
+	return nil
+}
+
+// DeleteTrip removes a trip at the specified index
+func (d *StorageData) DeleteTrip(index int) error {
+	if index < 0 || index >= len(d.Trips) {
+		return errors.New("invalid trip index")
+	}
+	d.Trips = append(d.Trips[:index], d.Trips[index+1:]...)
+	return nil
+}

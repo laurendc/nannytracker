@@ -278,3 +278,57 @@ func TestCalculateWeeklySummaries(t *testing.T) {
 		})
 	}
 }
+
+func TestEditTrip(t *testing.T) {
+	data := &StorageData{
+		Trips: []Trip{
+			{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 5.0},
+			{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 2.5},
+		},
+	}
+
+	// Test valid edit
+	newTrip := Trip{Date: "2024-03-22", Origin: "Home", Destination: "Gym", Miles: 3.0}
+	if err := data.EditTrip(0, newTrip); err != nil {
+		t.Errorf("EditTrip failed: %v", err)
+	}
+	if data.Trips[0] != newTrip {
+		t.Errorf("Expected trip to be updated, got %+v", data.Trips[0])
+	}
+
+	// Test invalid index
+	if err := data.EditTrip(2, newTrip); err == nil {
+		t.Error("Expected error for invalid index")
+	}
+
+	// Test invalid trip
+	invalidTrip := Trip{Date: "invalid", Origin: "Home", Destination: "Work", Miles: 5.0}
+	if err := data.EditTrip(0, invalidTrip); err == nil {
+		t.Error("Expected error for invalid trip")
+	}
+}
+
+func TestDeleteTrip(t *testing.T) {
+	data := &StorageData{
+		Trips: []Trip{
+			{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 5.0},
+			{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 2.5},
+		},
+	}
+
+	// Test valid delete
+	if err := data.DeleteTrip(0); err != nil {
+		t.Errorf("DeleteTrip failed: %v", err)
+	}
+	if len(data.Trips) != 1 {
+		t.Errorf("Expected 1 trip after deletion, got %d", len(data.Trips))
+	}
+	if data.Trips[0].Date != "2024-03-21" {
+		t.Errorf("Expected remaining trip to be the second one, got %+v", data.Trips[0])
+	}
+
+	// Test invalid index
+	if err := data.DeleteTrip(1); err == nil {
+		t.Error("Expected error for invalid index")
+	}
+}
