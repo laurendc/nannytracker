@@ -56,7 +56,7 @@ Run the application:
 - **Enter**: Confirm input or move to next field
 - **Ctrl+E**: Edit selected trip
 - **Ctrl+D**: Delete selected trip (requires confirmation)
-- **↑/↓**: Navigate through trips
+- **↑/↓**: Navigate through trips (selected trip shown in theme color)
 - **Ctrl+C**: Quit application
 
 ### Adding a Trip
