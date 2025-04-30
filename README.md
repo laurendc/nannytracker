@@ -5,6 +5,7 @@ A terminal-based application for tracking mileage and calculating reimbursements
 ## Features
 
 - Track trips with date, origin, destination, and mileage
+- Support for single and round trips
 - Automatic mileage calculation using Google Maps API
 - Weekly summaries of mileage and reimbursement amounts
 - Edit and delete trips with confirmation
@@ -64,13 +65,14 @@ Run the application:
 1. Enter the date (YYYY-MM-DD)
 2. Enter the origin address
 3. Enter the destination address
-4. The mileage will be automatically calculated
+4. Select trip type (single or round)
+5. The mileage will be automatically calculated (doubled for round trips)
 
 ### Editing a Trip
 
 1. Select the trip using ↑/↓ keys
 2. Press Ctrl+E to enter edit mode
-3. Update the date, origin, and destination
+3. Update the date, origin, destination, and trip type
 4. Press Enter after each field
 
 ### Deleting a Trip
@@ -105,4 +107,4 @@ go test ./...
 - Add support for recurring trips
 - Add monthly summaries
 - Add date range filtering for trips
-- Add data backup functionality 
+- Add data backup functionality
