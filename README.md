@@ -1,96 +1,108 @@
 # Nanny Mileage Tracker
 
-A simple Terminal User Interface (TUI) application to track nanny mileage and calculate reimbursement. The application uses Google Maps API for accurate distance calculations.
+A terminal-based application for tracking mileage and calculating reimbursements for nannies.
 
 ## Features
 
-- Enter origin and destination addresses
-- Accurate distance calculation using Google Maps Distance Matrix API
-- Track multiple trips with dates
-- Calculate total mileage and reimbursement
-- Simple and intuitive interface
-- Automatic trip saving (trips are saved in ~/.nannytracker/trips.json)
-- Configurable reimbursement rate (defaults to $0.70 per mile)
-- Input validation for addresses, trip data, and dates
-- Date tracking for each trip (YYYY-MM-DD format)
-- Weekly summaries with total miles and reimbursement amounts
-- Persistent storage with automatic data structure creation
-
-## Data Structure
-
-The application stores data in a JSON format with the following structure:
-
-```json
-{
-  "trips": [
-    {
-      "origin": "string",
-      "destination": "string",
-      "miles": number,
-      "date": "YYYY-MM-DD"
-    }
-  ],
-  "weekly_summaries": [
-    {
-      "WeekStart": "YYYY-MM-DD",
-      "WeekEnd": "YYYY-MM-DD",
-      "TotalMiles": number,
-      "TotalAmount": number
-    }
-  ]
-}
-```
+- Track trips with date, origin, destination, and mileage
+- Automatic mileage calculation using Google Maps API
+- Weekly summaries of mileage and reimbursement amounts
+- Edit and delete trips with confirmation
+- Persistent storage of trip data
+- Beautiful terminal UI with keyboard navigation
 
 ## Installation
 
-1. Make sure you have Go installed (version 1.23 or higher)
-2. Clone this repository
-3. Run `go mod tidy` to install dependencies
-4. Set up your environment variables:
-   - Create a `.env` file in the project root
-   - Add your Google Maps API key: `GOOGLE_MAPS_API_KEY=your_api_key_here`
-   - (Optional) Configure custom rate per mile: `RATE_PER_MILE=0.70`
-   - (Optional) Configure custom data file path: `DATA_FILE_PATH=~/.nannytracker/trips.json`
-5. Run `go run main.go` to start the application
+1. Clone the repository:
+```bash
+git clone https://github.com/lauren/nannytracker.git
+cd nannytracker
+```
 
-## Usage
+2. Install dependencies:
+```bash
+go mod download
+```
 
-1. Launch the application with `go run main.go`
-2. Enter the date in YYYY-MM-DD format and press Enter
-3. Enter the origin address and press Enter
-4. Enter the destination address and press Enter
-5. The application will:
-   - Calculate the actual distance using Google Maps
-   - Save the trip automatically
-   - Update weekly summaries
-   - Display total mileage and reimbursement
-6. Press Ctrl+C to quit the application
-
-## Data Storage
-
-All trips are automatically saved to `~/.nannytracker/trips.json`. The application:
-- Creates the data directory if it doesn't exist
-- Initializes an empty data structure for new installations
-- Maintains weekly summaries automatically
-- Preserves all data between sessions
+3. Build the application:
+```bash
+go build
+```
 
 ## Configuration
 
-The application can be configured using environment variables:
+1. Create a `.env` file in the project root with your Google Maps API key:
+```
+GOOGLE_MAPS_API_KEY=your_api_key_here
+```
 
-- `GOOGLE_MAPS_API_KEY` (required): Your Google Maps API key for distance calculations
-- `RATE_PER_MILE` (optional): Custom reimbursement rate per mile (default: 0.70)
-- `DATA_FILE_PATH` (optional): Custom location for the trips data file
+2. (Optional) Create a `config.json` file to customize settings:
+```json
+{
+  "rate_per_mile": 0.70,
+  "data_path": "~/.nannytracker"
+}
+```
 
-You can set these either in your environment or in a `.env` file in the project root.
+## Usage
 
-## Future Improvements
+Run the application:
+```bash
+./nannytracker
+```
 
-- Add ability to edit/delete trips
+### Keyboard Controls
+
+- **Enter**: Confirm input or move to next field
+- **Ctrl+E**: Edit selected trip
+- **Ctrl+D**: Delete selected trip (requires confirmation)
+- **↑/↓**: Navigate through trips
+- **Ctrl+C**: Quit application
+
+### Adding a Trip
+
+1. Enter the date (YYYY-MM-DD)
+2. Enter the origin address
+3. Enter the destination address
+4. The mileage will be automatically calculated
+
+### Editing a Trip
+
+1. Select the trip using ↑/↓ keys
+2. Press Ctrl+E to enter edit mode
+3. Update the date, origin, and destination
+4. Press Enter after each field
+
+### Deleting a Trip
+
+1. Select the trip using ↑/↓ keys
+2. Press Ctrl+D to enter delete confirmation mode
+3. Type 'yes' and press Enter to confirm deletion
+4. Type anything else and press Enter to cancel
+
+## Development
+
+### Running Tests
+
+```bash
+go test ./...
+```
+
+### Project Structure
+
+- `cmd/`: Main application entry point
+- `internal/`: Core application code
+  - `maps/`: Google Maps API integration
+  - `model/`: Data models and business logic
+  - `storage/`: Data persistence
+  - `ui/`: Terminal user interface
+- `pkg/`: Shared utilities
+  - `config/`: Configuration management
+
+## Future Enhancements
+
 - Add export functionality for reimbursement reports
 - Add support for recurring trips
 - Add monthly summaries
 - Add date range filtering for trips
-- Add trip categories or tags
-- Add support for multiple reimbursement rates
 - Add data backup functionality 
