@@ -12,6 +12,7 @@ type Trip struct {
 	Destination string  `json:"destination"`
 	Miles       float64 `json:"miles"`
 	Date        string  `json:"date"` // Format: YYYY-MM-DD
+	Type        string  `json:"type"` // "single" or "round"
 }
 
 // Validate checks if a trip is valid
@@ -27,6 +28,12 @@ func (t Trip) Validate() error {
 	}
 	if t.Date == "" {
 		return errors.New("date cannot be empty")
+	}
+	if t.Type == "" {
+		return errors.New("trip type cannot be empty")
+	}
+	if t.Type != "single" && t.Type != "round" {
+		return errors.New("trip type must be either 'single' or 'round'")
 	}
 	// Validate date format (YYYY-MM-DD)
 	date, err := time.Parse("2006-01-02", t.Date)
@@ -44,7 +51,11 @@ func (t Trip) Validate() error {
 func CalculateTotalMiles(trips []Trip) float64 {
 	var total float64
 	for _, t := range trips {
-		total += t.Miles
+		if t.Type == "round" {
+			total += t.Miles * 2
+		} else {
+			total += t.Miles
+		}
 	}
 	return total
 }

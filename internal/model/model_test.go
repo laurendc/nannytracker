@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"sort"
 	"testing"
 	"time"
@@ -41,38 +42,80 @@ func TestTripValidation(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "valid trip",
-			trip:    Trip{Origin: "Home", Destination: "Work", Miles: 5.0, Date: "2024-03-20"},
+			name: "valid trip",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "Work",
+				Miles:       5.0,
+				Date:        "2024-03-20",
+				Type:        "single",
+			},
 			wantErr: false,
 		},
 		{
-			name:    "empty origin",
-			trip:    Trip{Origin: "", Destination: "Work", Miles: 5.0, Date: "2024-03-20"},
+			name: "empty origin",
+			trip: Trip{
+				Origin:      "",
+				Destination: "Work",
+				Miles:       5.0,
+				Date:        "2024-03-20",
+				Type:        "single",
+			},
 			wantErr: true,
 		},
 		{
-			name:    "empty destination",
-			trip:    Trip{Origin: "Home", Destination: "", Miles: 5.0, Date: "2024-03-20"},
+			name: "empty destination",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "",
+				Miles:       5.0,
+				Date:        "2024-03-20",
+				Type:        "single",
+			},
 			wantErr: true,
 		},
 		{
-			name:    "negative miles",
-			trip:    Trip{Origin: "Home", Destination: "Work", Miles: -5.0, Date: "2024-03-20"},
+			name: "negative miles",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "Work",
+				Miles:       -5.0,
+				Date:        "2024-03-20",
+				Type:        "single",
+			},
 			wantErr: true,
 		},
 		{
-			name:    "zero miles",
-			trip:    Trip{Origin: "Home", Destination: "Work", Miles: 0.0, Date: "2024-03-20"},
+			name: "zero miles",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "Work",
+				Miles:       0.0,
+				Date:        "2024-03-20",
+				Type:        "single",
+			},
 			wantErr: true,
 		},
 		{
-			name:    "empty date",
-			trip:    Trip{Origin: "Home", Destination: "Work", Miles: 5.0, Date: ""},
+			name: "empty date",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "Work",
+				Miles:       5.0,
+				Date:        "",
+				Type:        "single",
+			},
 			wantErr: true,
 		},
 		{
-			name:    "invalid date format",
-			trip:    Trip{Origin: "Home", Destination: "Work", Miles: 5.0, Date: "03-20-2024"},
+			name: "invalid date format",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "Work",
+				Miles:       5.0,
+				Date:        "03-20-2024",
+				Type:        "single",
+			},
 			wantErr: true,
 		},
 	}
@@ -137,6 +180,7 @@ func TestDateValidation(t *testing.T) {
 				Destination: "Work",
 				Miles:       5.0,
 				Date:        tt.date,
+				Type:        "single",
 			}
 			err := trip.Validate()
 			if (err != nil) != tt.wantErr {
@@ -148,9 +192,9 @@ func TestDateValidation(t *testing.T) {
 
 func TestTripDateOrdering(t *testing.T) {
 	trips := []Trip{
-		{Origin: "A", Destination: "B", Miles: 10.0, Date: "2024-03-22"},
-		{Origin: "C", Destination: "D", Miles: 15.0, Date: "2024-03-20"},
-		{Origin: "E", Destination: "F", Miles: 5.0, Date: "2024-03-21"},
+		{Origin: "A", Destination: "B", Miles: 10.0, Date: "2024-03-22", Type: "single"},
+		{Origin: "C", Destination: "D", Miles: 15.0, Date: "2024-03-20", Type: "single"},
+		{Origin: "E", Destination: "F", Miles: 5.0, Date: "2024-03-21", Type: "single"},
 	}
 
 	// Sort trips by date
@@ -173,10 +217,10 @@ func TestTripDateOrdering(t *testing.T) {
 
 func TestTripDateFiltering(t *testing.T) {
 	trips := []Trip{
-		{Origin: "A", Destination: "B", Miles: 10.0, Date: "2024-03-20"},
-		{Origin: "C", Destination: "D", Miles: 15.0, Date: "2024-03-21"},
-		{Origin: "E", Destination: "F", Miles: 5.0, Date: "2024-03-22"},
-		{Origin: "G", Destination: "H", Miles: 8.0, Date: "2024-03-23"},
+		{Origin: "A", Destination: "B", Miles: 10.0, Date: "2024-03-20", Type: "single"},
+		{Origin: "C", Destination: "D", Miles: 15.0, Date: "2024-03-21", Type: "single"},
+		{Origin: "E", Destination: "F", Miles: 5.0, Date: "2024-03-22", Type: "single"},
+		{Origin: "G", Destination: "H", Miles: 8.0, Date: "2024-03-23", Type: "single"},
 	}
 
 	// Filter trips for a specific date
@@ -282,13 +326,13 @@ func TestCalculateWeeklySummaries(t *testing.T) {
 func TestEditTrip(t *testing.T) {
 	data := &StorageData{
 		Trips: []Trip{
-			{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 5.0},
-			{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 2.5},
+			{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 5.0, Type: "single"},
+			{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 2.5, Type: "round"},
 		},
 	}
 
 	// Test valid edit
-	newTrip := Trip{Date: "2024-03-22", Origin: "Home", Destination: "Gym", Miles: 3.0}
+	newTrip := Trip{Date: "2024-03-22", Origin: "Home", Destination: "Gym", Miles: 3.0, Type: "single"}
 	if err := data.EditTrip(0, newTrip); err != nil {
 		t.Errorf("EditTrip failed: %v", err)
 	}
@@ -302,7 +346,7 @@ func TestEditTrip(t *testing.T) {
 	}
 
 	// Test invalid trip
-	invalidTrip := Trip{Date: "invalid", Origin: "Home", Destination: "Work", Miles: 5.0}
+	invalidTrip := Trip{Date: "invalid", Origin: "Home", Destination: "Work", Miles: 5.0, Type: "single"}
 	if err := data.EditTrip(0, invalidTrip); err == nil {
 		t.Error("Expected error for invalid trip")
 	}
@@ -330,5 +374,123 @@ func TestDeleteTrip(t *testing.T) {
 	// Test invalid index
 	if err := data.DeleteTrip(1); err == nil {
 		t.Error("Expected error for invalid index")
+	}
+}
+
+func TestTripTypeValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		trip    Trip
+		wantErr bool
+	}{
+		{
+			name: "valid single trip",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "Work",
+				Miles:       5.0,
+				Date:        "2024-03-20",
+				Type:        "single",
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid round trip",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "Work",
+				Miles:       5.0,
+				Date:        "2024-03-20",
+				Type:        "round",
+			},
+			wantErr: false,
+		},
+		{
+			name: "empty trip type",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "Work",
+				Miles:       5.0,
+				Date:        "2024-03-20",
+				Type:        "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid trip type",
+			trip: Trip{
+				Origin:      "Home",
+				Destination: "Work",
+				Miles:       5.0,
+				Date:        "2024-03-20",
+				Type:        "invalid",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.trip.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Trip.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRoundTripMileageCalculation(t *testing.T) {
+	trips := []Trip{
+		{
+			Origin:      "Home",
+			Destination: "Work",
+			Miles:       10.0,
+			Date:        "2024-03-20",
+			Type:        "single",
+		},
+		{
+			Origin:      "Home",
+			Destination: "Store",
+			Miles:       5.0,
+			Date:        "2024-03-20",
+			Type:        "round",
+		},
+	}
+
+	totalMiles := CalculateTotalMiles(trips)
+	// First trip: 10 miles (single)
+	// Second trip: 5 miles * 2 (round trip)
+	expectedMiles := 20.0
+
+	if totalMiles != expectedMiles {
+		t.Errorf("CalculateTotalMiles() = %v, want %v", totalMiles, expectedMiles)
+	}
+}
+
+func TestTripTypeSerialization(t *testing.T) {
+	originalTrip := Trip{
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       5.0,
+		Date:        "2024-03-20",
+		Type:        "round",
+	}
+
+	// Serialize to JSON
+	data, err := json.Marshal(originalTrip)
+	if err != nil {
+		t.Fatalf("Failed to marshal trip: %v", err)
+	}
+
+	// Deserialize back
+	var deserializedTrip Trip
+	if err := json.Unmarshal(data, &deserializedTrip); err != nil {
+		t.Fatalf("Failed to unmarshal trip: %v", err)
+	}
+
+	// Verify type was preserved
+	if deserializedTrip.Type != originalTrip.Type {
+		t.Errorf("Trip type not preserved during serialization. Got %s, want %s",
+			deserializedTrip.Type, originalTrip.Type)
 	}
 }
