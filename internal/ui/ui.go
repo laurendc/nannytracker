@@ -18,7 +18,7 @@ type Model struct {
 	TextInput    textinput.Model
 	Trips        []model.Trip
 	CurrentTrip  model.Trip
-	Mode         string // "date", "origin", "destination", "edit", "delete", or "delete_confirm"
+	Mode         string // "date", "origin", "destination", "type", "edit", "delete", or "delete_confirm"
 	Err          error
 	Storage      storage.Storage
 	RatePerMile  float64
@@ -122,6 +122,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				}
 				m.CurrentTrip.Miles = distance
+
+				// Move to trip type selection
+				m.Mode = "type"
+				m.TextInput.Reset()
+				m.TextInput.Placeholder = "Enter trip type (single/round)..."
+			} else if m.Mode == "type" {
+				tripType := strings.ToLower(m.TextInput.Value())
+				if tripType != "single" && tripType != "round" {
+					m.Err = fmt.Errorf("invalid trip type: %s. Must be 'single' or 'round'", tripType)
+					return m, cmd
+				}
+				m.CurrentTrip.Type = tripType
 
 				// Validate the trip before saving
 				if err := m.CurrentTrip.Validate(); err != nil {
@@ -251,6 +263,9 @@ func (m *Model) View() string {
 	if m.CurrentTrip.Destination != "" {
 		s.WriteString(fmt.Sprintf("Destination: %s\n", m.CurrentTrip.Destination))
 	}
+	if m.CurrentTrip.Type != "" {
+		s.WriteString(fmt.Sprintf("Type: %s\n", m.CurrentTrip.Type))
+	}
 
 	// Weekly summaries
 	if len(m.Data.WeeklySummaries) > 0 {
@@ -270,7 +285,13 @@ func (m *Model) View() string {
 			if i == m.SelectedTrip {
 				style = style.Foreground(lipgloss.Color("#FF5F87"))
 			}
-			s.WriteString(style.Render(fmt.Sprintf("%d. %s → %s (%.2f miles) - %s\n", i+1, t.Origin, t.Destination, t.Miles, t.Date)))
+			// Calculate display miles based on trip type
+			displayMiles := t.Miles
+			if t.Type == "round" {
+				displayMiles = t.Miles * 2
+			}
+			s.WriteString(style.Render(fmt.Sprintf("%d. %s → %s (%.2f miles, %s) - %s\n",
+				i+1, t.Origin, t.Destination, displayMiles, t.Type, t.Date)))
 		}
 	}
 
