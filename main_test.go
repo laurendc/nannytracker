@@ -90,13 +90,25 @@ func TestTripCreation(t *testing.T) {
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	uiModel = updatedModel.(*ui.Model)
 
+	if uiModel.Mode != "type" {
+		t.Errorf("Expected mode to be 'type', got '%s'", uiModel.Mode)
+	}
+
+	// Test trip type input
+	uiModel.TextInput.SetValue("single")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*ui.Model)
+
 	if len(uiModel.Trips) != 1 {
 		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
 	}
 
-	if uiModel.Trips[0].Date != "2024-03-20" || uiModel.Trips[0].Origin != "123 Main St" || uiModel.Trips[0].Destination != "456 Oak Ave" {
-		t.Errorf("Trip data doesn't match input. Got date: %s, origin: %s, destination: %s",
-			uiModel.Trips[0].Date, uiModel.Trips[0].Origin, uiModel.Trips[0].Destination)
+	if uiModel.Trips[0].Date != "2024-03-20" ||
+		uiModel.Trips[0].Origin != "123 Main St" ||
+		uiModel.Trips[0].Destination != "456 Oak Ave" ||
+		uiModel.Trips[0].Type != "single" {
+		t.Errorf("Trip data doesn't match input. Got date: %s, origin: %s, destination: %s, type: %s",
+			uiModel.Trips[0].Date, uiModel.Trips[0].Origin, uiModel.Trips[0].Destination, uiModel.Trips[0].Type)
 	}
 
 	// Verify saved trips
@@ -109,7 +121,10 @@ func TestTripCreation(t *testing.T) {
 		t.Errorf("Expected 1 saved trip, got %d", len(savedData.Trips))
 	}
 
-	if savedData.Trips[0].Date != "2024-03-20" || savedData.Trips[0].Origin != "123 Main St" || savedData.Trips[0].Destination != "456 Oak Ave" {
+	if savedData.Trips[0].Date != "2024-03-20" ||
+		savedData.Trips[0].Origin != "123 Main St" ||
+		savedData.Trips[0].Destination != "456 Oak Ave" ||
+		savedData.Trips[0].Type != "single" {
 		t.Errorf("Saved trip data doesn't match input")
 	}
 
@@ -147,9 +162,9 @@ func TestTotalMilesCalculation(t *testing.T) {
 
 	// Add multiple trips
 	trips := []model.Trip{
-		{Date: "2024-03-20", Origin: "A", Destination: "B", Miles: 10.0},
-		{Date: "2024-03-21", Origin: "C", Destination: "D", Miles: 15.0},
-		{Date: "2024-03-22", Origin: "E", Destination: "F", Miles: 5.0},
+		{Date: "2024-03-20", Origin: "A", Destination: "B", Miles: 10.0, Type: "single"},
+		{Date: "2024-03-21", Origin: "C", Destination: "D", Miles: 15.0, Type: "round"},
+		{Date: "2024-03-22", Origin: "E", Destination: "F", Miles: 5.0, Type: "single"},
 	}
 
 	for _, trip := range trips {
@@ -157,12 +172,13 @@ func TestTotalMilesCalculation(t *testing.T) {
 	}
 
 	totalMiles := uiModel.CalculateTotalMiles(uiModel.Trips)
-	if totalMiles != 30.0 {
-		t.Errorf("Expected total miles to be 30.0, got %.2f", totalMiles)
+	expectedMiles := 10.0 + (15.0 * 2) + 5.0 // single + round + single
+	if totalMiles != expectedMiles {
+		t.Errorf("Expected total miles to be %.2f, got %.2f", expectedMiles, totalMiles)
 	}
 
 	totalReimbursement := uiModel.CalculateReimbursement(uiModel.Trips, cfg.RatePerMile)
-	expectedReimbursement := 30.0 * cfg.RatePerMile
+	expectedReimbursement := expectedMiles * cfg.RatePerMile
 	if totalReimbursement != expectedReimbursement {
 		t.Errorf("Expected total reimbursement to be $%.2f, got $%.2f", expectedReimbursement, totalReimbursement)
 	}
@@ -194,8 +210,8 @@ func TestStorage(t *testing.T) {
 	// Test saving data
 	data := &model.StorageData{
 		Trips: []model.Trip{
-			{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 5.0},
-			{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 2.5},
+			{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 5.0, Type: "single"},
+			{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 2.5, Type: "round"},
 		},
 		WeeklySummaries: []model.WeeklySummary{
 			{
