@@ -268,7 +268,7 @@ func (m *Model) View() string {
 		for i, t := range m.Trips {
 			style := lipgloss.NewStyle()
 			if i == m.SelectedTrip {
-				style = style.Background(lipgloss.Color("#626262"))
+				style = style.Foreground(lipgloss.Color("#FF5F87"))
 			}
 			s.WriteString(style.Render(fmt.Sprintf("%d. %s → %s (%.2f miles) - %s\n", i+1, t.Origin, t.Destination, t.Miles, t.Date)))
 		}
