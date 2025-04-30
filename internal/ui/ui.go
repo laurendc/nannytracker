@@ -15,15 +15,17 @@ import (
 
 // Model represents the UI state
 type Model struct {
-	TextInput   textinput.Model
-	Trips       []model.Trip
-	CurrentTrip model.Trip
-	Mode        string // "date", "origin", or "destination"
-	Err         error
-	Storage     storage.Storage
-	RatePerMile float64
-	MapsClient  maps.DistanceCalculator
-	Data        *model.StorageData
+	TextInput    textinput.Model
+	Trips        []model.Trip
+	CurrentTrip  model.Trip
+	Mode         string // "date", "origin", "destination", "edit", "delete", or "delete_confirm"
+	Err          error
+	Storage      storage.Storage
+	RatePerMile  float64
+	MapsClient   maps.DistanceCalculator
+	Data         *model.StorageData
+	EditIndex    int // Index of trip being edited
+	SelectedTrip int // Index of selected trip for operations
 }
 
 // New creates a new UI model with a mock maps client (for backward compatibility)
@@ -55,7 +57,11 @@ func New(storage storage.Storage, ratePerMile float64) (*Model, error) {
 func NewWithClient(storage storage.Storage, ratePerMile float64, mapsClient maps.DistanceCalculator) (*Model, error) {
 	data, err := storage.LoadData()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load data: %w", err)
+		// Initialize empty data if loading fails
+		data = &model.StorageData{
+			Trips:           make([]model.Trip, 0),
+			WeeklySummaries: make([]model.WeeklySummary, 0),
+		}
 	}
 
 	ti := textinput.New()
@@ -73,6 +79,7 @@ func NewWithClient(storage storage.Storage, ratePerMile float64, mapsClient maps
 		RatePerMile: ratePerMile,
 		MapsClient:  mapsClient,
 		Data:        data,
+		EditIndex:   -1,
 	}, nil
 }
 
@@ -87,16 +94,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
-			if m.Mode == "date" {
+			if m.Mode == "date" || m.Mode == "edit" {
 				m.CurrentTrip.Date = m.TextInput.Value()
 				m.TextInput.Reset()
 				m.Mode = "origin"
-				m.TextInput.Placeholder = "Enter origin address..."
+				if m.EditIndex >= 0 {
+					m.TextInput.Placeholder = "Edit origin address..."
+				} else {
+					m.TextInput.Placeholder = "Enter origin address..."
+				}
 			} else if m.Mode == "origin" {
 				m.CurrentTrip.Origin = m.TextInput.Value()
 				m.TextInput.Reset()
 				m.Mode = "destination"
-				m.TextInput.Placeholder = "Enter destination address..."
+				if m.EditIndex >= 0 {
+					m.TextInput.Placeholder = "Edit destination address..."
+				} else {
+					m.TextInput.Placeholder = "Enter destination address..."
+				}
 			} else if m.Mode == "destination" {
 				m.CurrentTrip.Destination = m.TextInput.Value()
 
@@ -108,19 +123,92 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.CurrentTrip.Miles = distance
 
-				m.Trips = append(m.Trips, m.CurrentTrip)
-				m.Data.Trips = m.Trips
+				// Validate the trip before saving
+				if err := m.CurrentTrip.Validate(); err != nil {
+					m.Err = fmt.Errorf("invalid trip: %w", err)
+					return m, cmd
+				}
+
+				if m.EditIndex >= 0 {
+					// Update existing trip
+					if err := m.Data.EditTrip(m.EditIndex, m.CurrentTrip); err != nil {
+						m.Err = err
+						return m, cmd
+					}
+					m.Trips[m.EditIndex] = m.CurrentTrip
+				} else {
+					// Add new trip
+					newTrip := m.CurrentTrip // Create a copy to avoid reference issues
+					m.Data.Trips = append(m.Data.Trips, newTrip)
+					m.Trips = m.Data.Trips
+				}
+
 				model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
 				if err := m.Storage.SaveData(m.Data); err != nil {
 					m.Err = err
+					return m, cmd
 				}
+
+				// Reset state
 				m.CurrentTrip = model.Trip{}
-				m.TextInput.Reset()
 				m.Mode = "date"
+				m.EditIndex = -1
+				m.TextInput.Reset()
 				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+			} else if m.Mode == "delete_confirm" {
+				if strings.ToLower(m.TextInput.Value()) == "yes" {
+					// Delete the trip
+					if err := m.Data.DeleteTrip(m.SelectedTrip); err != nil {
+						m.Err = err
+						return m, cmd
+					}
+					model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+					if err := m.Storage.SaveData(m.Data); err != nil {
+						m.Err = err
+					}
+					m.Trips = m.Data.Trips
+					if m.SelectedTrip >= len(m.Trips) {
+						m.SelectedTrip = len(m.Trips) - 1
+					}
+					// Reset mode and input
+					m.Mode = "date"
+					m.TextInput.Reset()
+					m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+				} else {
+					// Cancel deletion
+					m.Mode = "date"
+					m.TextInput.Reset()
+					m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+				}
 			}
 		case tea.KeyCtrlC:
 			return m, tea.Quit
+		case tea.KeyCtrlE:
+			// Enter edit mode
+			if m.SelectedTrip >= 0 && m.SelectedTrip < len(m.Trips) {
+				m.Mode = "edit"
+				m.EditIndex = m.SelectedTrip
+				m.CurrentTrip = m.Trips[m.SelectedTrip]
+				m.TextInput.SetValue(m.CurrentTrip.Date)
+				m.TextInput.Placeholder = "Edit date (YYYY-MM-DD)..."
+			}
+		case tea.KeyCtrlD:
+			// Enter delete confirmation mode
+			if m.SelectedTrip >= 0 && m.SelectedTrip < len(m.Trips) {
+				m.Mode = "delete_confirm"
+				m.TextInput.Reset()
+				m.TextInput.Placeholder = "Type 'yes' to confirm deletion..."
+			}
+		case tea.KeyUp:
+			// Move selection up
+			if m.SelectedTrip > 0 {
+				m.SelectedTrip--
+			}
+		case tea.KeyDown:
+			// Move selection down
+			if m.SelectedTrip < len(m.Trips)-1 {
+				m.SelectedTrip++
+			}
 		}
 	}
 
@@ -144,6 +232,14 @@ func (m *Model) View() string {
 
 	// Input field
 	s.WriteString(m.TextInput.View() + "\n\n")
+
+	// Delete confirmation message
+	if m.Mode == "delete_confirm" {
+		confirmStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF0000")).
+			Render("WARNING: This will permanently delete the selected trip. Type 'yes' to confirm.")
+		s.WriteString(confirmStyle + "\n\n")
+	}
 
 	// Current trip info
 	if m.CurrentTrip.Date != "" {
@@ -170,7 +266,11 @@ func (m *Model) View() string {
 	if len(m.Trips) > 0 {
 		s.WriteString("\nTrip History:\n")
 		for i, t := range m.Trips {
-			s.WriteString(fmt.Sprintf("%d. %s → %s (%.2f miles) - %s\n", i+1, t.Origin, t.Destination, t.Miles, t.Date))
+			style := lipgloss.NewStyle()
+			if i == m.SelectedTrip {
+				style = style.Background(lipgloss.Color("#626262"))
+			}
+			s.WriteString(style.Render(fmt.Sprintf("%d. %s → %s (%.2f miles) - %s\n", i+1, t.Origin, t.Destination, t.Miles, t.Date)))
 		}
 	}
 
@@ -193,7 +293,7 @@ func (m *Model) View() string {
 	// Help text
 	help := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#626262")).
-		Render("\nPress Ctrl+C to quit")
+		Render("\nPress Ctrl+C to quit | Ctrl+E to edit | Ctrl+D to delete | ↑/↓ to select")
 	s.WriteString(help)
 
 	return s.String()

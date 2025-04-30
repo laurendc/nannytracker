@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,13 +13,28 @@ import (
 )
 
 func setupTestUI(t *testing.T) (*Model, func()) {
-	store := storage.New("testdata/trips.json")
+	// Create a temporary directory for test data
+	tempDir, err := os.MkdirTemp("", "nannytracker-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+
+	// Create storage file path
+	storageFile := filepath.Join(tempDir, "trips.json")
+
+	store := storage.New(storageFile)
 	mockClient := maps.NewMockClient()
 	model, err := NewWithClient(store, 0.655, mockClient)
 	if err != nil {
+		os.RemoveAll(tempDir)
 		t.Fatalf("Failed to create UI model: %v", err)
 	}
-	return model, func() {}
+
+	cleanup := func() {
+		os.RemoveAll(tempDir)
+	}
+
+	return model, cleanup
 }
 
 func TestTripCreation(t *testing.T) {
@@ -56,13 +73,33 @@ func TestTripCreation(t *testing.T) {
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	uiModel = updatedModel.(*Model)
 
+	// Check for errors
+	if uiModel.Err != nil {
+		t.Errorf("Unexpected error: %v", uiModel.Err)
+	}
+
+	// Verify the trip was created with the correct data
 	if len(uiModel.Trips) != 1 {
 		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
 	}
 
-	if uiModel.Trips[0].Date != "2024-03-20" || uiModel.Trips[0].Origin != "123 Main St" || uiModel.Trips[0].Destination != "456 Oak Ave" {
-		t.Errorf("Trip data doesn't match input. Got date: %s, origin: %s, destination: %s",
-			uiModel.Trips[0].Date, uiModel.Trips[0].Origin, uiModel.Trips[0].Destination)
+	trip := uiModel.Trips[0]
+	if trip.Date != "2024-03-20" {
+		t.Errorf("Expected date to be '2024-03-20', got '%s'", trip.Date)
+	}
+	if trip.Origin != "123 Main St" {
+		t.Errorf("Expected origin to be '123 Main St', got '%s'", trip.Origin)
+	}
+	if trip.Destination != "456 Oak Ave" {
+		t.Errorf("Expected destination to be '456 Oak Ave', got '%s'", trip.Destination)
+	}
+	if trip.Miles != 10.0 {
+		t.Errorf("Expected miles to be 10.0, got %.2f", trip.Miles)
+	}
+
+	// Verify the trip is valid
+	if err := trip.Validate(); err != nil {
+		t.Errorf("Trip validation failed: %v", err)
 	}
 }
 
@@ -160,5 +197,196 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 		if !strings.Contains(view, expected) {
 			t.Errorf("View does not contain expected weekly summary: %s", expected)
 		}
+	}
+}
+
+func TestEditTrip(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a trip first
+	originalTrip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.5,
+	}
+	uiModel.AddTrip(originalTrip)
+
+	// Select the trip
+	uiModel.SelectedTrip = 0
+
+	// Enter edit mode
+	var updatedModel tea.Model
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	uiModel = updatedModel.(*Model)
+
+	if uiModel.Mode != "edit" {
+		t.Errorf("Expected mode to be 'edit', got '%s'", uiModel.Mode)
+	}
+
+	// Verify initial edit state
+	if uiModel.EditIndex != 0 {
+		t.Errorf("Expected EditIndex to be 0, got %d", uiModel.EditIndex)
+	}
+	if uiModel.CurrentTrip != originalTrip {
+		t.Errorf("Expected CurrentTrip to match original trip")
+	}
+	if uiModel.TextInput.Value() != originalTrip.Date {
+		t.Errorf("Expected TextInput value to be '%s', got '%s'", originalTrip.Date, uiModel.TextInput.Value())
+	}
+
+	// Edit the date
+	newDate := "2024-03-21"
+	uiModel.TextInput.SetValue(newDate)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Verify date was updated and mode transitioned correctly
+	if uiModel.CurrentTrip.Date != newDate {
+		t.Errorf("Expected CurrentTrip.Date to be '%s', got '%s'", newDate, uiModel.CurrentTrip.Date)
+	}
+	if uiModel.Mode != "origin" {
+		t.Errorf("Expected mode to transition to 'origin', got '%s'", uiModel.Mode)
+	}
+	if !strings.Contains(uiModel.TextInput.Placeholder, "Edit origin") {
+		t.Errorf("Expected placeholder to contain 'Edit origin', got '%s'", uiModel.TextInput.Placeholder)
+	}
+
+	// Complete the edit with remaining fields
+	uiModel.TextInput.SetValue("Updated Home")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	if uiModel.Mode != "destination" {
+		t.Errorf("Expected mode to be 'destination', got '%s'", uiModel.Mode)
+	}
+
+	uiModel.TextInput.SetValue("Updated Work")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Verify final state
+	if len(uiModel.Trips) != 1 {
+		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
+	}
+
+	editedTrip := uiModel.Trips[0]
+	if editedTrip.Date != newDate {
+		t.Errorf("Expected final date to be '%s', got '%s'", newDate, editedTrip.Date)
+	}
+	if editedTrip.Origin != "Updated Home" {
+		t.Errorf("Expected origin to be 'Updated Home', got '%s'", editedTrip.Origin)
+	}
+	if editedTrip.Destination != "Updated Work" {
+		t.Errorf("Expected destination to be 'Updated Work', got '%s'", editedTrip.Destination)
+	}
+
+	// Verify edit mode was cleared
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to reset to 'date', got '%s'", uiModel.Mode)
+	}
+	if uiModel.EditIndex != -1 {
+		t.Errorf("Expected EditIndex to reset to -1, got %d", uiModel.EditIndex)
+	}
+}
+
+func TestDeleteTrip(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a trip first
+	trip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.5,
+	}
+	uiModel.AddTrip(trip)
+
+	// Select the trip
+	uiModel.SelectedTrip = 0
+
+	// Enter delete confirmation mode
+	var updatedModel tea.Model
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	uiModel = updatedModel.(*Model)
+
+	// Verify we're in delete confirmation mode
+	if uiModel.Mode != "delete_confirm" {
+		t.Errorf("Expected mode to be 'delete_confirm', got '%s'", uiModel.Mode)
+	}
+
+	// Test cancellation by entering something other than 'yes'
+	uiModel.TextInput.SetValue("no")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Verify trip wasn't deleted and mode was reset
+	if len(uiModel.Trips) != 1 {
+		t.Errorf("Expected 1 trip after cancellation, got %d", len(uiModel.Trips))
+	}
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date' after cancellation, got '%s'", uiModel.Mode)
+	}
+
+	// Enter delete confirmation mode again
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	uiModel = updatedModel.(*Model)
+
+	// Confirm deletion by entering 'yes'
+	uiModel.TextInput.SetValue("yes")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Verify trip was deleted and mode was reset
+	if len(uiModel.Trips) != 0 {
+		t.Errorf("Expected 0 trips after deletion, got %d", len(uiModel.Trips))
+	}
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date' after deletion, got '%s'", uiModel.Mode)
+	}
+}
+
+func TestTripSelection(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add multiple trips
+	trips := []model.Trip{
+		{Date: "2024-03-20", Origin: "A", Destination: "B", Miles: 10.0},
+		{Date: "2024-03-21", Origin: "C", Destination: "D", Miles: 15.0},
+		{Date: "2024-03-22", Origin: "E", Destination: "F", Miles: 5.0},
+	}
+
+	for _, trip := range trips {
+		uiModel.AddTrip(trip)
+	}
+
+	// Initialize selection
+	uiModel.SelectedTrip = -1
+
+	// Test selection movement
+	var updatedModel tea.Model
+
+	// Move down
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTrip != 0 {
+		t.Errorf("Expected selected trip to be 0, got %d", uiModel.SelectedTrip)
+	}
+
+	// Move down again
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTrip != 1 {
+		t.Errorf("Expected selected trip to be 1, got %d", uiModel.SelectedTrip)
+	}
+
+	// Move up
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTrip != 0 {
+		t.Errorf("Expected selected trip to be 0, got %d", uiModel.SelectedTrip)
 	}
 }
