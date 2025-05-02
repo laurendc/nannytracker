@@ -245,53 +245,63 @@ func TestCalculateWeeklySummaries(t *testing.T) {
 	tests := []struct {
 		name        string
 		trips       []Trip
+		expenses    []Expense
 		ratePerMile float64
 		want        []WeeklySummary
 	}{
 		{
-			name:        "empty trips",
+			name:        "no trips or expenses",
 			trips:       []Trip{},
-			ratePerMile: 0.655,
+			expenses:    []Expense{},
+			ratePerMile: 0.70,
 			want:        nil,
 		},
 		{
-			name: "single week",
+			name: "single week with trips and expenses",
 			trips: []Trip{
-				{Date: "2024-03-17", Miles: 10.0}, // Sunday
-				{Date: "2024-03-18", Miles: 15.0}, // Monday
-				{Date: "2024-03-19", Miles: 20.0}, // Tuesday
+				{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10, Type: "single"},
+				{Date: "2024-03-21", Origin: "Work", Destination: "Home", Miles: 10, Type: "single"},
 			},
-			ratePerMile: 0.655,
+			expenses: []Expense{
+				{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
+				{Date: "2024-03-21", Amount: 15.75, Description: "Snacks"},
+			},
+			ratePerMile: 0.70,
 			want: []WeeklySummary{
 				{
-					WeekStart:   "2024-03-17",
-					WeekEnd:     "2024-03-23",
-					TotalMiles:  45.0,
-					TotalAmount: 29.475,
+					WeekStart:     "2024-03-17", // Sunday of the week
+					WeekEnd:       "2024-03-23", // Saturday of the week
+					TotalMiles:    20.0,
+					TotalAmount:   14.0,  // 20 miles * 0.70
+					TotalExpenses: 41.25, // 25.50 + 15.75
 				},
 			},
 		},
 		{
 			name: "multiple weeks",
 			trips: []Trip{
-				{Date: "2024-03-17", Miles: 10.0}, // Week 1
-				{Date: "2024-03-18", Miles: 15.0}, // Week 1
-				{Date: "2024-03-24", Miles: 20.0}, // Week 2
-				{Date: "2024-03-25", Miles: 25.0}, // Week 2
+				{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10, Type: "single"},
+				{Date: "2024-03-27", Origin: "Work", Destination: "Home", Miles: 10, Type: "single"},
 			},
-			ratePerMile: 0.655,
+			expenses: []Expense{
+				{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
+				{Date: "2024-03-27", Amount: 15.75, Description: "Snacks"},
+			},
+			ratePerMile: 0.70,
 			want: []WeeklySummary{
 				{
-					WeekStart:   "2024-03-17",
-					WeekEnd:     "2024-03-23",
-					TotalMiles:  25.0,
-					TotalAmount: 16.375,
+					WeekStart:     "2024-03-17", // First week
+					WeekEnd:       "2024-03-23",
+					TotalMiles:    10.0,
+					TotalAmount:   7.0,   // 10 miles * 0.70
+					TotalExpenses: 25.50, // First week expense
 				},
 				{
-					WeekStart:   "2024-03-24",
-					WeekEnd:     "2024-03-30",
-					TotalMiles:  45.0,
-					TotalAmount: 29.475,
+					WeekStart:     "2024-03-24", // Second week
+					WeekEnd:       "2024-03-30",
+					TotalMiles:    10.0,
+					TotalAmount:   7.0,   // 10 miles * 0.70
+					TotalExpenses: 15.75, // Second week expense
 				},
 			},
 		},
@@ -299,24 +309,27 @@ func TestCalculateWeeklySummaries(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CalculateWeeklySummaries(tt.trips, tt.ratePerMile)
+			got := CalculateWeeklySummaries(tt.trips, tt.expenses, tt.ratePerMile)
 			if len(got) != len(tt.want) {
 				t.Errorf("CalculateWeeklySummaries() got %d summaries, want %d", len(got), len(tt.want))
 				return
 			}
 
-			for i, summary := range got {
-				if summary.WeekStart != tt.want[i].WeekStart {
-					t.Errorf("WeekStart = %v, want %v", summary.WeekStart, tt.want[i].WeekStart)
+			for i := range got {
+				if got[i].WeekStart != tt.want[i].WeekStart {
+					t.Errorf("Week %d: WeekStart got %v, want %v", i, got[i].WeekStart, tt.want[i].WeekStart)
 				}
-				if summary.WeekEnd != tt.want[i].WeekEnd {
-					t.Errorf("WeekEnd = %v, want %v", summary.WeekEnd, tt.want[i].WeekEnd)
+				if got[i].WeekEnd != tt.want[i].WeekEnd {
+					t.Errorf("Week %d: WeekEnd got %v, want %v", i, got[i].WeekEnd, tt.want[i].WeekEnd)
 				}
-				if summary.TotalMiles != tt.want[i].TotalMiles {
-					t.Errorf("TotalMiles = %v, want %v", summary.TotalMiles, tt.want[i].TotalMiles)
+				if got[i].TotalMiles != tt.want[i].TotalMiles {
+					t.Errorf("Week %d: TotalMiles got %v, want %v", i, got[i].TotalMiles, tt.want[i].TotalMiles)
 				}
-				if summary.TotalAmount != tt.want[i].TotalAmount {
-					t.Errorf("TotalAmount = %v, want %v", summary.TotalAmount, tt.want[i].TotalAmount)
+				if got[i].TotalAmount != tt.want[i].TotalAmount {
+					t.Errorf("Week %d: TotalAmount got %v, want %v", i, got[i].TotalAmount, tt.want[i].TotalAmount)
+				}
+				if got[i].TotalExpenses != tt.want[i].TotalExpenses {
+					t.Errorf("Week %d: TotalExpenses got %v, want %v", i, got[i].TotalExpenses, tt.want[i].TotalExpenses)
 				}
 			}
 		})
@@ -493,4 +506,259 @@ func TestTripTypeSerialization(t *testing.T) {
 		t.Errorf("Trip type not preserved during serialization. Got %s, want %s",
 			deserializedTrip.Type, originalTrip.Type)
 	}
+}
+
+func TestExpenseValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		expense Expense
+		wantErr bool
+	}{
+		{
+			name: "valid expense",
+			expense: Expense{
+				Date:        "2024-03-20",
+				Amount:      25.50,
+				Description: "Lunch for kids",
+			},
+			wantErr: false,
+		},
+		{
+			name: "empty date",
+			expense: Expense{
+				Date:        "",
+				Amount:      25.50,
+				Description: "Lunch for kids",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid date format",
+			expense: Expense{
+				Date:        "03/20/2024",
+				Amount:      25.50,
+				Description: "Lunch for kids",
+			},
+			wantErr: true,
+		},
+		{
+			name: "zero amount",
+			expense: Expense{
+				Date:        "2024-03-20",
+				Amount:      0,
+				Description: "Lunch for kids",
+			},
+			wantErr: true,
+		},
+		{
+			name: "negative amount",
+			expense: Expense{
+				Date:        "2024-03-20",
+				Amount:      -25.50,
+				Description: "Lunch for kids",
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty description",
+			expense: Expense{
+				Date:        "2024-03-20",
+				Amount:      25.50,
+				Description: "",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.expense.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Expense.Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCalculateTotalExpenses(t *testing.T) {
+	expenses := []Expense{
+		{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
+		{Date: "2024-03-21", Amount: 15.75, Description: "Snacks"},
+		{Date: "2024-03-22", Amount: 30.00, Description: "Activities"},
+	}
+
+	expected := 71.25
+	got := CalculateTotalExpenses(expenses)
+	if got != expected {
+		t.Errorf("CalculateTotalExpenses() = %v, want %v", got, expected)
+	}
+}
+
+func TestWeeklySummaries(t *testing.T) {
+	trips := []Trip{
+		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10, Type: "single"},
+		{Date: "2024-03-21", Origin: "Work", Destination: "Home", Miles: 10, Type: "single"},
+	}
+
+	expenses := []Expense{} // Empty expenses list for this test
+	ratePerMile := 0.70
+	summaries := CalculateWeeklySummaries(trips, expenses, ratePerMile)
+
+	if len(summaries) != 1 {
+		t.Errorf("Expected 1 weekly summary, got %d", len(summaries))
+	}
+
+	summary := summaries[0]
+	expectedMiles := 20.0
+	expectedAmount := 14.0 // 20 miles * 0.70
+
+	if summary.TotalMiles != expectedMiles {
+		t.Errorf("Expected %v miles, got %v", expectedMiles, summary.TotalMiles)
+	}
+	if summary.TotalAmount != expectedAmount {
+		t.Errorf("Expected $%v amount, got $%v", expectedAmount, summary.TotalAmount)
+	}
+}
+
+func TestStorageDataExpenseOperations(t *testing.T) {
+	data := &StorageData{
+		Trips:    []Trip{},
+		Expenses: []Expense{},
+	}
+
+	// Test AddExpense
+	expense := Expense{
+		Date:        "2024-03-20",
+		Amount:      25.50,
+		Description: "Lunch",
+	}
+	err := data.AddExpense(expense)
+	if err != nil {
+		t.Errorf("AddExpense() error = %v", err)
+	}
+	if len(data.Expenses) != 1 {
+		t.Errorf("Expected 1 expense, got %d", len(data.Expenses))
+	}
+
+	// Test EditExpense
+	editedExpense := Expense{
+		Date:        "2024-03-20",
+		Amount:      30.00,
+		Description: "Lunch and snacks",
+	}
+	err = data.EditExpense(0, editedExpense)
+	if err != nil {
+		t.Errorf("EditExpense() error = %v", err)
+	}
+	if data.Expenses[0].Amount != 30.00 {
+		t.Errorf("Expected amount $30.00, got $%v", data.Expenses[0].Amount)
+	}
+
+	// Test DeleteExpense
+	err = data.DeleteExpense(0)
+	if err != nil {
+		t.Errorf("DeleteExpense() error = %v", err)
+	}
+	if len(data.Expenses) != 0 {
+		t.Errorf("Expected 0 expenses, got %d", len(data.Expenses))
+	}
+
+	// Test invalid operations
+	err = data.EditExpense(0, editedExpense)
+	if err == nil {
+		t.Error("Expected error for invalid index in EditExpense")
+	}
+
+	err = data.DeleteExpense(0)
+	if err == nil {
+		t.Error("Expected error for invalid index in DeleteExpense")
+	}
+}
+
+func TestStorage(t *testing.T) {
+	data := &StorageData{
+		Trips:    []Trip{},
+		Expenses: []Expense{},
+	}
+
+	// Add a trip
+	trip := Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10,
+		Type:        "single",
+	}
+	err := data.AddTrip(trip)
+	if err != nil {
+		t.Errorf("AddTrip() error = %v", err)
+	}
+
+	// Calculate weekly summaries
+	ratePerMile := 0.70
+	CalculateAndUpdateWeeklySummaries(data, ratePerMile)
+
+	if len(data.WeeklySummaries) != 1 {
+		t.Errorf("Expected 1 weekly summary, got %d", len(data.WeeklySummaries))
+	}
+
+	summary := data.WeeklySummaries[0]
+	expectedMiles := 10.0
+	expectedAmount := 7.0 // 10 miles * 0.70
+
+	if summary.TotalMiles != expectedMiles {
+		t.Errorf("Expected %v miles, got %v", expectedMiles, summary.TotalMiles)
+	}
+	if summary.TotalAmount != expectedAmount {
+		t.Errorf("Expected $%v amount, got $%v", expectedAmount, summary.TotalAmount)
+	}
+}
+
+func TestAddingTrip(t *testing.T) {
+	data := &StorageData{
+		Trips:    []Trip{},
+		Expenses: []Expense{},
+	}
+
+	trip := Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10,
+		Type:        "single",
+	}
+
+	err := data.AddTrip(trip)
+	if err != nil {
+		t.Errorf("AddTrip() error = %v", err)
+	}
+
+	if len(data.Trips) != 1 {
+		t.Errorf("Expected 1 trip, got %d", len(data.Trips))
+	}
+
+	if data.Trips[0].Date != trip.Date {
+		t.Errorf("Expected date %v, got %v", trip.Date, data.Trips[0].Date)
+	}
+	if data.Trips[0].Origin != trip.Origin {
+		t.Errorf("Expected origin %v, got %v", trip.Origin, data.Trips[0].Origin)
+	}
+	if data.Trips[0].Destination != trip.Destination {
+		t.Errorf("Expected destination %v, got %v", trip.Destination, data.Trips[0].Destination)
+	}
+	if data.Trips[0].Miles != trip.Miles {
+		t.Errorf("Expected miles %v, got %v", trip.Miles, data.Trips[0].Miles)
+	}
+	if data.Trips[0].Type != trip.Type {
+		t.Errorf("Expected type %v, got %v", trip.Type, data.Trips[0].Type)
+	}
+}
+
+// AddTrip adds a new trip to the storage data
+func (d *StorageData) AddTrip(trip Trip) error {
+	if err := trip.Validate(); err != nil {
+		return err
+	}
+	d.Trips = append(d.Trips, trip)
+	return nil
 }

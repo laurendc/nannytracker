@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -15,17 +16,19 @@ import (
 
 // Model represents the UI state
 type Model struct {
-	TextInput    textinput.Model
-	Trips        []model.Trip
-	CurrentTrip  model.Trip
-	Mode         string // "date", "origin", "destination", "type", "edit", "delete", or "delete_confirm"
-	Err          error
-	Storage      storage.Storage
-	RatePerMile  float64
-	MapsClient   maps.DistanceCalculator
-	Data         *model.StorageData
-	EditIndex    int // Index of trip being edited
-	SelectedTrip int // Index of selected trip for operations
+	TextInput       textinput.Model
+	Trips           []model.Trip
+	CurrentTrip     model.Trip
+	CurrentExpense  model.Expense
+	Mode            string // "date", "origin", "destination", "type", "edit", "delete", "delete_confirm", "expense_date", "expense_amount", "expense_description", "expense_edit", "expense_delete_confirm"
+	Err             error
+	Storage         storage.Storage
+	RatePerMile     float64
+	MapsClient      maps.DistanceCalculator
+	Data            *model.StorageData
+	EditIndex       int // Index of trip being edited
+	SelectedTrip    int // Index of selected trip for operations
+	SelectedExpense int // Index of selected expense for operations
 }
 
 // New creates a new UI model with a mock maps client (for backward compatibility)
@@ -197,6 +200,175 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.EditIndex = -1
 				m.TextInput.Reset()
 				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+			} else if m.Mode == "expense_date" {
+				// Create a temporary expense to validate the date
+				tempExpense := model.Expense{
+					Date:        m.TextInput.Value(),
+					Amount:      1.0,    // Dummy value for validation
+					Description: "temp", // Dummy value for validation
+				}
+				if err := tempExpense.Validate(); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+				m.CurrentExpense.Date = m.TextInput.Value()
+				m.TextInput.Reset()
+				m.Mode = "expense_amount"
+				m.TextInput.Placeholder = "Enter expense amount..."
+			} else if m.Mode == "expense_amount" {
+				amount, err := strconv.ParseFloat(m.TextInput.Value(), 64)
+				if err != nil {
+					m.Err = fmt.Errorf("invalid amount: %w", err)
+					return m, cmd
+				}
+				// Create a temporary expense to validate the amount
+				tempExpense := model.Expense{
+					Date:        m.CurrentExpense.Date,
+					Amount:      amount,
+					Description: "temp", // Dummy value for validation
+				}
+				if err := tempExpense.Validate(); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+				m.CurrentExpense.Amount = amount
+				m.TextInput.Reset()
+				m.Mode = "expense_description"
+				m.TextInput.Placeholder = "Enter expense description..."
+			} else if m.Mode == "expense_description" {
+				m.CurrentExpense.Description = m.TextInput.Value()
+
+				// Validate the expense before saving
+				if err := m.CurrentExpense.Validate(); err != nil {
+					m.Err = fmt.Errorf("invalid expense: %w", err)
+					return m, cmd
+				}
+
+				// Add new expense
+				if err := m.Data.AddExpense(m.CurrentExpense); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+
+				model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+				if err := m.Storage.SaveData(m.Data); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+
+				// Reset state
+				m.CurrentExpense = model.Expense{}
+				m.Mode = "date"
+				m.TextInput.Reset()
+				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+			} else if m.Mode == "expense_edit" {
+				if m.TextInput.Value() == "" && m.EditIndex >= 0 {
+					// Keep existing value if no new input
+					m.TextInput.Reset()
+					m.Mode = "expense_amount"
+					m.TextInput.Placeholder = "Edit expense amount..."
+				} else {
+					// Create a temporary expense to validate the date
+					tempExpense := model.Expense{
+						Date:        m.TextInput.Value(),
+						Amount:      1.0,    // Dummy value for validation
+						Description: "temp", // Dummy value for validation
+					}
+					if err := tempExpense.Validate(); err != nil {
+						m.Err = err
+						return m, cmd
+					}
+					m.CurrentExpense.Date = m.TextInput.Value()
+					m.TextInput.Reset()
+					m.Mode = "expense_amount"
+					m.TextInput.Placeholder = "Edit expense amount..."
+				}
+			} else if m.Mode == "expense_amount" && m.EditIndex >= 0 {
+				if m.TextInput.Value() == "" {
+					// Keep existing value if no new input
+					m.TextInput.Reset()
+					m.Mode = "expense_description"
+					m.TextInput.Placeholder = "Edit expense description..."
+				} else {
+					amount, err := strconv.ParseFloat(m.TextInput.Value(), 64)
+					if err != nil {
+						m.Err = fmt.Errorf("invalid amount: %w", err)
+						return m, cmd
+					}
+					// Create a temporary expense to validate the amount
+					tempExpense := model.Expense{
+						Date:        m.CurrentExpense.Date,
+						Amount:      amount,
+						Description: "temp", // Dummy value for validation
+					}
+					if err := tempExpense.Validate(); err != nil {
+						m.Err = err
+						return m, cmd
+					}
+					m.CurrentExpense.Amount = amount
+					m.TextInput.Reset()
+					m.Mode = "expense_description"
+					m.TextInput.Placeholder = "Edit expense description..."
+				}
+			} else if m.Mode == "expense_description" && m.EditIndex >= 0 {
+				if m.TextInput.Value() == "" {
+					// Keep existing value if no new input
+					if m.CurrentExpense.Description == "" {
+						m.Err = fmt.Errorf("description cannot be empty")
+						return m, cmd
+					}
+				} else {
+					m.CurrentExpense.Description = m.TextInput.Value()
+				}
+
+				// Validate the expense before saving
+				if err := m.CurrentExpense.Validate(); err != nil {
+					m.Err = fmt.Errorf("invalid expense: %w", err)
+					return m, cmd
+				}
+
+				// Update existing expense
+				if err := m.Data.EditExpense(m.EditIndex, m.CurrentExpense); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+
+				model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+				if err := m.Storage.SaveData(m.Data); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+
+				// Reset state
+				m.CurrentExpense = model.Expense{}
+				m.Mode = "date"
+				m.EditIndex = -1
+				m.TextInput.Reset()
+				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+			} else if m.Mode == "expense_delete_confirm" {
+				if strings.ToLower(m.TextInput.Value()) == "yes" {
+					// Delete the expense
+					if err := m.Data.DeleteExpense(m.SelectedExpense); err != nil {
+						m.Err = err
+						return m, cmd
+					}
+					model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+					if err := m.Storage.SaveData(m.Data); err != nil {
+						m.Err = err
+					}
+					if m.SelectedExpense >= len(m.Data.Expenses) {
+						m.SelectedExpense = len(m.Data.Expenses) - 1
+					}
+					// Reset mode and input
+					m.Mode = "date"
+					m.TextInput.Reset()
+					m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+				} else {
+					// Cancel deletion
+					m.Mode = "date"
+					m.TextInput.Reset()
+					m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+				}
 			} else if m.Mode == "delete_confirm" {
 				if strings.ToLower(m.TextInput.Value()) == "yes" {
 					// Delete the trip
@@ -227,29 +399,79 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case tea.KeyCtrlE:
 			// Enter edit mode
-			if m.SelectedTrip >= 0 && m.SelectedTrip < len(m.Trips) {
-				m.Mode = "edit"
-				m.EditIndex = m.SelectedTrip
-				m.CurrentTrip = m.Trips[m.SelectedTrip]
-				m.TextInput.SetValue(m.CurrentTrip.Date)
-				m.TextInput.Placeholder = "Edit date (YYYY-MM-DD)..."
+			if m.Mode == "date" {
+				if m.SelectedTrip >= 0 && m.SelectedTrip < len(m.Trips) {
+					m.Mode = "edit"
+					m.EditIndex = m.SelectedTrip
+					m.CurrentTrip = m.Trips[m.SelectedTrip]
+					m.TextInput.SetValue(m.CurrentTrip.Date)
+					m.TextInput.Placeholder = "Edit date (YYYY-MM-DD)..."
+				} else if m.SelectedExpense >= 0 && m.SelectedExpense < len(m.Data.Expenses) {
+					m.Mode = "expense_edit"
+					m.EditIndex = m.SelectedExpense
+					m.CurrentExpense = m.Data.Expenses[m.SelectedExpense]
+					m.TextInput.SetValue(m.CurrentExpense.Date)
+					m.TextInput.Placeholder = "Edit date (YYYY-MM-DD)..."
+				}
 			}
+		case tea.KeyCtrlX:
+			// Enter expense mode
+			m.Mode = "expense_date"
+			m.TextInput.Reset()
+			m.TextInput.Placeholder = "Enter expense date (YYYY-MM-DD)..."
 		case tea.KeyCtrlD:
 			// Enter delete confirmation mode
-			if m.SelectedTrip >= 0 && m.SelectedTrip < len(m.Trips) {
-				m.Mode = "delete_confirm"
-				m.TextInput.Reset()
-				m.TextInput.Placeholder = "Type 'yes' to confirm deletion..."
+			if m.Mode == "date" {
+				if m.SelectedTrip >= 0 && m.SelectedTrip < len(m.Trips) {
+					m.Mode = "delete_confirm"
+					m.TextInput.Reset()
+					m.TextInput.Placeholder = "Type 'yes' to confirm deletion..."
+				} else if m.SelectedExpense >= 0 && m.SelectedExpense < len(m.Data.Expenses) {
+					m.Mode = "expense_delete_confirm"
+					m.TextInput.Reset()
+					m.TextInput.Placeholder = "Type 'yes' to confirm deletion..."
+				}
+			}
+		case tea.KeyDown:
+			// Move selection down
+			if len(m.Trips) > 0 {
+				if m.SelectedTrip == -1 {
+					m.SelectedTrip = 0
+					m.SelectedExpense = -1
+				} else if m.SelectedTrip < len(m.Trips)-1 {
+					m.SelectedTrip++
+					m.SelectedExpense = -1
+				}
+			} else if len(m.Data.Expenses) > 0 {
+				if m.SelectedExpense == -1 {
+					m.SelectedExpense = 0
+					m.SelectedTrip = -1
+				} else if m.SelectedExpense < len(m.Data.Expenses)-1 {
+					m.SelectedExpense++
+					m.SelectedTrip = -1
+				}
 			}
 		case tea.KeyUp:
 			// Move selection up
 			if m.SelectedTrip > 0 {
 				m.SelectedTrip--
+				m.SelectedExpense = -1
+			} else if m.SelectedExpense > 0 {
+				m.SelectedExpense--
+				m.SelectedTrip = -1
 			}
-		case tea.KeyDown:
-			// Move selection down
-			if m.SelectedTrip < len(m.Trips)-1 {
-				m.SelectedTrip++
+		case tea.KeyTab:
+			// Switch between trips and expenses
+			if m.SelectedTrip >= 0 {
+				m.SelectedTrip = -1
+				if len(m.Data.Expenses) > 0 {
+					m.SelectedExpense = 0
+				}
+			} else {
+				m.SelectedExpense = -1
+				if len(m.Trips) > 0 {
+					m.SelectedTrip = 0
+				}
 			}
 		}
 	}
@@ -265,7 +487,7 @@ func (m *Model) View() string {
 	title := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#FF5F87")).
-		Render("Nanny Mileage Tracker")
+		Render("Nanny Tracker")
 	s.WriteString(title + "\n\n")
 
 	// Current mode
@@ -280,6 +502,11 @@ func (m *Model) View() string {
 		confirmStyle := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FF0000")).
 			Render("WARNING: This will permanently delete the selected trip. Type 'yes' to confirm.")
+		s.WriteString(confirmStyle + "\n\n")
+	} else if m.Mode == "expense_delete_confirm" {
+		confirmStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF0000")).
+			Render("WARNING: This will permanently delete the selected expense. Type 'yes' to confirm.")
 		s.WriteString(confirmStyle + "\n\n")
 	}
 
@@ -297,13 +524,28 @@ func (m *Model) View() string {
 		s.WriteString(fmt.Sprintf("Type: %s\n", m.CurrentTrip.Type))
 	}
 
+	// Current expense info
+	if m.Mode == "expense_date" || m.Mode == "expense_amount" || m.Mode == "expense_description" || m.Mode == "expense_edit" {
+		s.WriteString("\nEntering Expense:\n")
+		if m.CurrentExpense.Date != "" {
+			s.WriteString(fmt.Sprintf("Date: %s\n", m.CurrentExpense.Date))
+		}
+		if m.CurrentExpense.Amount != 0 {
+			s.WriteString(fmt.Sprintf("Amount: $%.2f\n", m.CurrentExpense.Amount))
+		}
+		if m.CurrentExpense.Description != "" {
+			s.WriteString(fmt.Sprintf("Description: %s\n", m.CurrentExpense.Description))
+		}
+	}
+
 	// Weekly summaries
 	if len(m.Data.WeeklySummaries) > 0 {
 		s.WriteString("\nWeekly Summaries:\n")
 		for _, summary := range m.Data.WeeklySummaries {
 			s.WriteString(fmt.Sprintf("Week of %s to %s:\n", summary.WeekStart, summary.WeekEnd))
 			s.WriteString(fmt.Sprintf("  Total Miles: %.2f\n", summary.TotalMiles))
-			s.WriteString(fmt.Sprintf("  Amount Owed: $%.2f\n\n", summary.TotalAmount))
+			s.WriteString(fmt.Sprintf("  Total Mileage Amount: $%.2f\n", summary.TotalAmount))
+			s.WriteString(fmt.Sprintf("  Total Expenses: $%.2f\n\n", summary.TotalExpenses))
 		}
 	}
 
@@ -320,8 +562,21 @@ func (m *Model) View() string {
 			if t.Type == "round" {
 				displayMiles = t.Miles * 2
 			}
-			s.WriteString(style.Render(fmt.Sprintf("%d. %s → %s (%.2f miles, %s) - %s\n",
-				i+1, t.Origin, t.Destination, displayMiles, t.Type, t.Date)))
+			s.WriteString(style.Render(fmt.Sprintf("%d. %s - %s → %s (%.2f miles, %s)\n",
+				i+1, t.Date, t.Origin, t.Destination, displayMiles, t.Type)))
+		}
+	}
+
+	// Expense history
+	if len(m.Data.Expenses) > 0 {
+		s.WriteString("\nExpense History:\n")
+		for i, e := range m.Data.Expenses {
+			style := lipgloss.NewStyle()
+			if i == m.SelectedExpense {
+				style = style.Foreground(lipgloss.Color("#FF5F87"))
+			}
+			s.WriteString(style.Render(fmt.Sprintf("%d. %s - $%.2f - %s\n",
+				i+1, e.Date, e.Amount, e.Description)))
 		}
 	}
 
@@ -330,7 +585,13 @@ func (m *Model) View() string {
 		totalMiles := model.CalculateTotalMiles(m.Trips)
 		totalReimbursement := model.CalculateReimbursement(m.Trips, m.RatePerMile)
 		s.WriteString(fmt.Sprintf("\nTotal Miles: %.2f\n", totalMiles))
-		s.WriteString(fmt.Sprintf("Total Reimbursement: $%.2f\n", totalReimbursement))
+		s.WriteString(fmt.Sprintf("Total Mileage Amount: $%.2f\n", totalReimbursement))
+	}
+
+	// Total expenses
+	if len(m.Data.Expenses) > 0 {
+		totalExpenses := model.CalculateTotalExpenses(m.Data.Expenses)
+		s.WriteString(fmt.Sprintf("Total Expenses: $%.2f\n", totalExpenses))
 	}
 
 	// Error message
@@ -344,7 +605,7 @@ func (m *Model) View() string {
 	// Help text
 	help := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#626262")).
-		Render("\nPress Ctrl+C to quit | Ctrl+E to edit | Ctrl+D to delete | ↑/↓ to select")
+		Render("\nPress Ctrl+C to quit | Ctrl+E to edit | Ctrl+D to delete | Ctrl+X for expenses | ↑/↓ to select | Tab to switch between trips/expenses")
 	s.WriteString(help)
 
 	return s.String()

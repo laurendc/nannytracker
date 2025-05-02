@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -227,27 +228,184 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 		{Date: "2024-03-25", Origin: "Work", Destination: "Home", Miles: 25.0}, // Week 2
 	}
 
+	// Add expenses for different weeks
+	expenses := []model.Expense{
+		{Date: "2024-03-17", Amount: 25.50, Description: "Lunch"},      // Week 1
+		{Date: "2024-03-18", Amount: 15.75, Description: "Snacks"},     // Week 1
+		{Date: "2024-03-24", Amount: 30.00, Description: "Activities"}, // Week 2
+	}
+
 	for _, trip := range trips {
 		uiModel.AddTrip(trip)
 	}
 
+	for _, expense := range expenses {
+		if err := uiModel.Data.AddExpense(expense); err != nil {
+			t.Fatalf("Failed to add expense: %v", err)
+		}
+	}
+
+	model.CalculateAndUpdateWeeklySummaries(uiModel.Data, uiModel.RatePerMile)
+
 	// Get the view
 	view := uiModel.View()
 
-	// Check if weekly summaries are displayed
+	// Check if weekly summaries are displayed with expenses
 	expectedSummaries := []string{
 		"Week of 2024-03-17 to 2024-03-23:",
 		"  Total Miles: 25.00",
-		"  Amount Owed: $16.38",
+		"  Total Mileage Amount: $16.38",
+		"  Total Expenses: $41.25",
 		"Week of 2024-03-24 to 2024-03-30:",
 		"  Total Miles: 45.00",
-		"  Amount Owed: $29.48",
+		"  Total Mileage Amount: $29.48",
+		"  Total Expenses: $30.00",
 	}
 
 	for _, expected := range expectedSummaries {
 		if !strings.Contains(view, expected) {
 			t.Errorf("View does not contain expected weekly summary: %s", expected)
 		}
+	}
+}
+
+func TestExpenseEntry(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test entering an expense
+	expense := model.Expense{
+		Date:        "2024-03-20",
+		Amount:      25.50,
+		Description: "Lunch",
+	}
+
+	// Simulate entering expense mode
+	msg := tea.KeyMsg{Type: tea.KeyCtrlX}
+	model, _ := uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	// Enter date
+	uiModel.TextInput.SetValue(expense.Date)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Enter amount
+	uiModel.TextInput.SetValue(fmt.Sprintf("%.2f", expense.Amount))
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Enter description
+	uiModel.TextInput.SetValue(expense.Description)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify expense was added
+	if len(uiModel.Data.Expenses) != 1 {
+		t.Errorf("Expected 1 expense, got %d", len(uiModel.Data.Expenses))
+	}
+
+	addedExpense := uiModel.Data.Expenses[0]
+	if addedExpense.Date != expense.Date {
+		t.Errorf("Expected date %s, got %s", expense.Date, addedExpense.Date)
+	}
+	if addedExpense.Amount != expense.Amount {
+		t.Errorf("Expected amount %.2f, got %.2f", expense.Amount, addedExpense.Amount)
+	}
+	if addedExpense.Description != expense.Description {
+		t.Errorf("Expected description %s, got %s", expense.Description, addedExpense.Description)
+	}
+
+	// Verify weekly summary was updated
+	if len(uiModel.Data.WeeklySummaries) != 1 {
+		t.Errorf("Expected 1 weekly summary, got %d", len(uiModel.Data.WeeklySummaries))
+	}
+
+	summary := uiModel.Data.WeeklySummaries[0]
+	if summary.TotalExpenses != expense.Amount {
+		t.Errorf("Expected total expenses %.2f, got %.2f", expense.Amount, summary.TotalExpenses)
+	}
+}
+
+func TestExpenseValidation(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Enter expense mode first
+	msg := tea.KeyMsg{Type: tea.KeyCtrlX}
+	model, _ := uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "expense_date" {
+		t.Errorf("Expected mode to be 'expense_date', got '%s'", uiModel.Mode)
+	}
+
+	// Test invalid date
+	uiModel.TextInput.SetValue("invalid-date")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify we're still in expense_date mode and have an error
+	if uiModel.Mode != "expense_date" {
+		t.Errorf("Expected to stay in expense_date mode after invalid date, got '%s'", uiModel.Mode)
+	}
+	if uiModel.Err == nil || !strings.Contains(uiModel.Err.Error(), "date must be in YYYY-MM-DD format") {
+		t.Errorf("Expected error about invalid date format, got: %v", uiModel.Err)
+	}
+
+	// Test valid date but invalid amount
+	uiModel.TextInput.SetValue("2024-03-20")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "expense_amount" {
+		t.Errorf("Expected mode to be 'expense_amount', got '%s'", uiModel.Mode)
+	}
+
+	uiModel.TextInput.SetValue("invalid-amount")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify we're still in expense_amount mode and have an error
+	if uiModel.Mode != "expense_amount" {
+		t.Errorf("Expected to stay in expense_amount mode after invalid amount, got '%s'", uiModel.Mode)
+	}
+	if uiModel.Err == nil || !strings.Contains(uiModel.Err.Error(), "invalid amount") {
+		t.Errorf("Expected error about invalid amount, got: %v", uiModel.Err)
+	}
+
+	// Test negative amount
+	uiModel.TextInput.SetValue("-10.00")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify we're still in expense_amount mode and have an error
+	if uiModel.Mode != "expense_amount" {
+		t.Errorf("Expected to stay in expense_amount mode after negative amount, got '%s'", uiModel.Mode)
+	}
+	if uiModel.Err == nil || !strings.Contains(uiModel.Err.Error(), "amount must be greater than 0") {
+		t.Errorf("Expected error about negative amount, got: %v", uiModel.Err)
+	}
+
+	// Test valid amount but empty description
+	uiModel.TextInput.SetValue("25.50")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "expense_description" {
+		t.Errorf("Expected mode to be 'expense_description', got '%s'", uiModel.Mode)
+	}
+
+	uiModel.TextInput.SetValue("")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify we're still in expense_description mode and have an error
+	if uiModel.Mode != "expense_description" {
+		t.Errorf("Expected to stay in expense_description mode after empty description, got '%s'", uiModel.Mode)
+	}
+	if uiModel.Err == nil || !strings.Contains(uiModel.Err.Error(), "description cannot be empty") {
+		t.Errorf("Expected error about empty description, got: %v", uiModel.Err)
 	}
 }
 
@@ -543,9 +701,9 @@ func TestTripHistoryDisplay(t *testing.T) {
 
 	// Check if trip history shows correct miles
 	expectedTrips := []string{
-		"1. Home → Work (10.00 miles, single) - 2024-03-20",
-		"2. Work → Store (10.00 miles, round) - 2024-03-21", // Should show doubled miles
-		"3. Home → Gym (3.00 miles, single) - 2024-03-22",
+		"1. 2024-03-20 - Home → Work (10.00 miles, single)",
+		"2. 2024-03-21 - Work → Store (10.00 miles, round)", // Should show doubled miles
+		"3. 2024-03-22 - Home → Gym (3.00 miles, single)",
 	}
 
 	for _, expected := range expectedTrips {
@@ -677,5 +835,46 @@ func TestEditTripWithMixedChanges(t *testing.T) {
 	}
 	if editedTrip.Type != originalTrip.Type {
 		t.Errorf("Expected type to remain '%s', got '%s'", originalTrip.Type, editedTrip.Type)
+	}
+}
+
+func TestExpenseHistoryDisplay(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add expenses
+	expenses := []model.Expense{
+		{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
+		{Date: "2024-03-21", Amount: 15.75, Description: "Snacks"},
+		{Date: "2024-03-22", Amount: 30.00, Description: "Activities"},
+	}
+
+	for _, expense := range expenses {
+		if err := uiModel.Data.AddExpense(expense); err != nil {
+			t.Fatalf("Failed to add expense: %v", err)
+		}
+	}
+
+	// Get the view
+	view := uiModel.View()
+
+	// Check if expense history shows correct format
+	expectedExpenses := []string{
+		"1. 2024-03-20 - $25.50 - Lunch",
+		"2. 2024-03-21 - $15.75 - Snacks",
+		"3. 2024-03-22 - $30.00 - Activities",
+	}
+
+	for _, expected := range expectedExpenses {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected expense: %s", expected)
+		}
+	}
+
+	// Verify total expenses
+	totalExpenses := model.CalculateTotalExpenses(uiModel.Data.Expenses)
+	expectedTotal := 25.50 + 15.75 + 30.00
+	if totalExpenses != expectedTotal {
+		t.Errorf("Expected total expenses to be %.2f, got %.2f", expectedTotal, totalExpenses)
 	}
 }
