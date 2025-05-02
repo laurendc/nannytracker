@@ -561,3 +561,121 @@ func TestTripHistoryDisplay(t *testing.T) {
 		t.Errorf("Expected total miles to be %.2f, got %.2f", expectedTotal, totalMiles)
 	}
 }
+
+func TestEditTripWithSkippedFields(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a trip first
+	originalTrip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.5,
+		Type:        "single",
+	}
+	uiModel.AddTrip(originalTrip)
+
+	// Select the trip
+	uiModel.SelectedTrip = 0
+
+	// Enter edit mode
+	var updatedModel tea.Model
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	uiModel = updatedModel.(*Model)
+
+	// Skip date field (press Enter without input)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Skip origin field (press Enter without input)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Skip destination field (press Enter without input)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Skip trip type field (press Enter without input)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Verify the trip remains unchanged
+	if len(uiModel.Trips) != 1 {
+		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
+	}
+
+	editedTrip := uiModel.Trips[0]
+	if editedTrip.Date != originalTrip.Date {
+		t.Errorf("Expected date to remain '%s', got '%s'", originalTrip.Date, editedTrip.Date)
+	}
+	if editedTrip.Origin != originalTrip.Origin {
+		t.Errorf("Expected origin to remain '%s', got '%s'", originalTrip.Origin, editedTrip.Origin)
+	}
+	if editedTrip.Destination != originalTrip.Destination {
+		t.Errorf("Expected destination to remain '%s', got '%s'", originalTrip.Destination, editedTrip.Destination)
+	}
+	if editedTrip.Type != originalTrip.Type {
+		t.Errorf("Expected type to remain '%s', got '%s'", originalTrip.Type, editedTrip.Type)
+	}
+}
+
+func TestEditTripWithMixedChanges(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a trip first
+	originalTrip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.5,
+		Type:        "single",
+	}
+	uiModel.AddTrip(originalTrip)
+
+	// Select the trip
+	uiModel.SelectedTrip = 0
+
+	// Enter edit mode
+	var updatedModel tea.Model
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	uiModel = updatedModel.(*Model)
+
+	// Change date
+	uiModel.TextInput.SetValue("2024-03-21")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Skip origin field
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Change destination
+	uiModel.TextInput.SetValue("Updated Work")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Skip trip type field
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Verify the trip has mixed changes
+	if len(uiModel.Trips) != 1 {
+		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
+	}
+
+	editedTrip := uiModel.Trips[0]
+	if editedTrip.Date != "2024-03-21" {
+		t.Errorf("Expected date to be '2024-03-21', got '%s'", editedTrip.Date)
+	}
+	if editedTrip.Origin != originalTrip.Origin {
+		t.Errorf("Expected origin to remain '%s', got '%s'", originalTrip.Origin, editedTrip.Origin)
+	}
+	if editedTrip.Destination != "Updated Work" {
+		t.Errorf("Expected destination to be 'Updated Work', got '%s'", editedTrip.Destination)
+	}
+	if editedTrip.Type != originalTrip.Type {
+		t.Errorf("Expected type to remain '%s', got '%s'", originalTrip.Type, editedTrip.Type)
+	}
+}

@@ -95,45 +95,75 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyEnter:
 			if m.Mode == "date" || m.Mode == "edit" {
-				m.CurrentTrip.Date = m.TextInput.Value()
-				m.TextInput.Reset()
-				m.Mode = "origin"
-				if m.EditIndex >= 0 {
+				if m.TextInput.Value() == "" && m.EditIndex >= 0 {
+					// Keep existing value if no new input
+					m.TextInput.Reset()
+					m.Mode = "origin"
 					m.TextInput.Placeholder = "Edit origin address..."
 				} else {
-					m.TextInput.Placeholder = "Enter origin address..."
+					m.CurrentTrip.Date = m.TextInput.Value()
+					m.TextInput.Reset()
+					m.Mode = "origin"
+					if m.EditIndex >= 0 {
+						m.TextInput.Placeholder = "Edit origin address..."
+					} else {
+						m.TextInput.Placeholder = "Enter origin address..."
+					}
 				}
 			} else if m.Mode == "origin" {
-				m.CurrentTrip.Origin = m.TextInput.Value()
-				m.TextInput.Reset()
-				m.Mode = "destination"
-				if m.EditIndex >= 0 {
+				if m.TextInput.Value() == "" && m.EditIndex >= 0 {
+					// Keep existing value if no new input
+					m.TextInput.Reset()
+					m.Mode = "destination"
 					m.TextInput.Placeholder = "Edit destination address..."
 				} else {
-					m.TextInput.Placeholder = "Enter destination address..."
+					m.CurrentTrip.Origin = m.TextInput.Value()
+					m.TextInput.Reset()
+					m.Mode = "destination"
+					if m.EditIndex >= 0 {
+						m.TextInput.Placeholder = "Edit destination address..."
+					} else {
+						m.TextInput.Placeholder = "Enter destination address..."
+					}
 				}
 			} else if m.Mode == "destination" {
-				m.CurrentTrip.Destination = m.TextInput.Value()
+				if m.TextInput.Value() == "" && m.EditIndex >= 0 {
+					// Keep existing value if no new input
+					m.TextInput.Reset()
+					m.Mode = "type"
+					m.TextInput.Placeholder = "Enter trip type (single/round)..."
+				} else {
+					m.CurrentTrip.Destination = m.TextInput.Value()
 
-				// Calculate distance using Google Maps API
-				distance, err := m.MapsClient.CalculateDistance(context.Background(), m.CurrentTrip.Origin, m.CurrentTrip.Destination)
-				if err != nil {
-					m.Err = fmt.Errorf("failed to calculate distance: %w", err)
-					return m, cmd
+					// Calculate distance using Google Maps API
+					distance, err := m.MapsClient.CalculateDistance(context.Background(), m.CurrentTrip.Origin, m.CurrentTrip.Destination)
+					if err != nil {
+						m.Err = fmt.Errorf("failed to calculate distance: %w", err)
+						return m, cmd
+					}
+					m.CurrentTrip.Miles = distance
+
+					// Move to trip type selection
+					m.Mode = "type"
+					m.TextInput.Reset()
+					m.TextInput.Placeholder = "Enter trip type (single/round)..."
 				}
-				m.CurrentTrip.Miles = distance
-
-				// Move to trip type selection
-				m.Mode = "type"
-				m.TextInput.Reset()
-				m.TextInput.Placeholder = "Enter trip type (single/round)..."
 			} else if m.Mode == "type" {
-				tripType := strings.ToLower(m.TextInput.Value())
-				if tripType != "single" && tripType != "round" {
-					m.Err = fmt.Errorf("invalid trip type: %s. Must be 'single' or 'round'", tripType)
-					return m, cmd
+				if m.TextInput.Value() == "" && m.EditIndex >= 0 {
+					// Keep existing value if no new input
+					tripType := m.CurrentTrip.Type
+					if tripType != "single" && tripType != "round" {
+						m.Err = fmt.Errorf("invalid trip type: %s. Must be 'single' or 'round'", tripType)
+						return m, cmd
+					}
+				} else {
+					tripType := strings.ToLower(m.TextInput.Value())
+					if tripType != "single" && tripType != "round" {
+						m.Err = fmt.Errorf("invalid trip type: %s. Must be 'single' or 'round'", tripType)
+						return m, cmd
+					}
+					m.CurrentTrip.Type = tripType
 				}
-				m.CurrentTrip.Type = tripType
 
 				// Validate the trip before saving
 				if err := m.CurrentTrip.Validate(); err != nil {
