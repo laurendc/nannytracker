@@ -72,8 +72,10 @@ Run the application:
 
 1. Select the trip using ↑/↓ keys
 2. Press Ctrl+E to enter edit mode
-3. Update the date, origin, destination, and trip type
-4. Press Enter after each field
+3. Update the fields you want to change:
+   - Press Enter without typing to keep the existing value
+   - Type a new value and press Enter to update the field
+4. The mileage will be automatically recalculated if origin or destination changes
 
 ### Deleting a Trip
 
