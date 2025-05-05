@@ -3,8 +3,10 @@ package ui
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,15 +22,18 @@ type Model struct {
 	Trips           []model.Trip
 	CurrentTrip     model.Trip
 	CurrentExpense  model.Expense
-	Mode            string // "date", "origin", "destination", "type", "edit", "delete", "delete_confirm", "expense_date", "expense_amount", "expense_description", "expense_edit", "expense_delete_confirm"
+	Mode            string // "date", "origin", "destination", "type", "edit", "delete", "delete_confirm", "expense_date", "expense_amount", "expense_description", "expense_edit", "expense_delete_confirm", "search"
 	Err             error
 	Storage         storage.Storage
 	RatePerMile     float64
 	MapsClient      maps.DistanceCalculator
 	Data            *model.StorageData
-	EditIndex       int // Index of trip being edited
-	SelectedTrip    int // Index of selected trip for operations
-	SelectedExpense int // Index of selected expense for operations
+	EditIndex       int    // Index of trip being edited
+	SelectedTrip    int    // Index of selected trip for operations
+	SelectedExpense int    // Index of selected expense for operations
+	SearchQuery     string // Current search query
+	SearchMode      bool   // Whether we're in search mode
+	CurrentGroup    int    // Index of current time group being viewed
 }
 
 // New creates a new UI model with a mock maps client (for backward compatibility)
@@ -97,6 +102,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
+			if m.Mode == "search" {
+				// Exit search mode
+				m.Mode = "date"
+				m.SearchMode = false
+				m.SearchQuery = ""
+				m.TextInput.Reset()
+				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+				return m, cmd
+			}
 			if m.Mode == "date" || m.Mode == "edit" {
 				if m.TextInput.Value() == "" && m.EditIndex >= 0 {
 					// Keep existing value if no new input
@@ -432,6 +446,58 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.TextInput.Placeholder = "Type 'yes' to confirm deletion..."
 				}
 			}
+		case tea.KeyCtrlF:
+			// Enter search mode
+			if m.Mode == "date" {
+				m.Mode = "search"
+				m.SearchMode = true
+				m.TextInput.Reset()
+				m.TextInput.Placeholder = "Search trips and expenses..."
+			}
+		case tea.KeyCtrlT:
+			// Jump to Today's group
+			if m.Mode == "date" {
+				groups := m.groupByTimePeriod()
+				for i, group := range groups {
+					if group.Title == "Today" {
+						m.CurrentGroup = i
+						break
+					}
+				}
+			}
+		case tea.KeyCtrlW:
+			// Jump to This Week's group
+			if m.Mode == "date" {
+				groups := m.groupByTimePeriod()
+				for i, group := range groups {
+					if group.Title == "This Week" {
+						m.CurrentGroup = i
+						break
+					}
+				}
+			}
+		case tea.KeyCtrlY:
+			// Jump to This Month's group
+			if m.Mode == "date" {
+				groups := m.groupByTimePeriod()
+				for i, group := range groups {
+					if group.Title == "This Month" {
+						m.CurrentGroup = i
+						break
+					}
+				}
+			}
+		case tea.KeyCtrlO:
+			// Jump to Older group
+			if m.Mode == "date" {
+				groups := m.groupByTimePeriod()
+				for i, group := range groups {
+					if group.Title == "Older" {
+						m.CurrentGroup = i
+						break
+					}
+				}
+			}
 		case tea.KeyDown:
 			// Move selection down
 			if len(m.Trips) > 0 {
@@ -474,10 +540,178 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+
+		// Handle search input
+		if m.Mode == "search" {
+			m.SearchQuery = m.TextInput.Value()
+		}
 	}
 
 	m.TextInput, cmd = m.TextInput.Update(msg)
 	return m, cmd
+}
+
+// TimeGroup represents a group of trips or expenses for a specific time period
+type TimeGroup struct {
+	Title     string
+	Trips     []model.Trip
+	Expenses  []model.Expense
+	StartDate string
+	EndDate   string
+}
+
+// filterBySearch filters trips and expenses based on the search query
+func (m *Model) filterBySearch(trips []model.Trip, expenses []model.Expense) ([]model.Trip, []model.Expense) {
+	if m.SearchQuery == "" {
+		return trips, expenses
+	}
+
+	query := strings.ToLower(m.SearchQuery)
+	var filteredTrips []model.Trip
+	var filteredExpenses []model.Expense
+
+	// Filter trips
+	for _, trip := range trips {
+		if strings.Contains(strings.ToLower(trip.Date), query) ||
+			strings.Contains(strings.ToLower(trip.Origin), query) ||
+			strings.Contains(strings.ToLower(trip.Destination), query) ||
+			strings.Contains(strings.ToLower(trip.Type), query) {
+			filteredTrips = append(filteredTrips, trip)
+		}
+	}
+
+	// Filter expenses
+	for _, expense := range expenses {
+		if strings.Contains(strings.ToLower(expense.Date), query) ||
+			strings.Contains(strings.ToLower(expense.Description), query) ||
+			strings.Contains(strings.ToLower(fmt.Sprintf("%.2f", expense.Amount)), query) {
+			filteredExpenses = append(filteredExpenses, expense)
+		}
+	}
+
+	return filteredTrips, filteredExpenses
+}
+
+// groupByTimePeriod groups trips and expenses by time periods (Today, This Week, This Month, Older)
+func (m *Model) groupByTimePeriod() []TimeGroup {
+	now := time.Now()
+	today := now.Format("2006-01-02")
+	weekStart := now.AddDate(0, 0, -int(now.Weekday())).Format("2006-01-02")
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).Format("2006-01-02")
+
+	groups := []TimeGroup{
+		{Title: "Today", StartDate: today, EndDate: today},
+		{Title: "This Week", StartDate: weekStart, EndDate: today},
+		{Title: "This Month", StartDate: monthStart, EndDate: today},
+		{Title: "Older", StartDate: "0000-01-01", EndDate: monthStart},
+	}
+
+	// Get filtered trips and expenses if in search mode
+	trips := m.Trips
+	expenses := m.Data.Expenses
+	if m.SearchMode {
+		trips, expenses = m.filterBySearch(trips, expenses)
+	}
+
+	// Sort trips and expenses by date
+	sort.Slice(trips, func(i, j int) bool {
+		return trips[i].Date > trips[j].Date // Most recent first
+	})
+	sort.Slice(expenses, func(i, j int) bool {
+		return expenses[i].Date > expenses[j].Date // Most recent first
+	})
+
+	// Group trips
+	for _, trip := range trips {
+		for i := range groups {
+			if trip.Date >= groups[i].StartDate && trip.Date <= groups[i].EndDate {
+				groups[i].Trips = append(groups[i].Trips, trip)
+				break
+			}
+		}
+	}
+
+	// Group expenses
+	for _, expense := range expenses {
+		for i := range groups {
+			if expense.Date >= groups[i].StartDate && expense.Date <= groups[i].EndDate {
+				groups[i].Expenses = append(groups[i].Expenses, expense)
+				break
+			}
+		}
+	}
+
+	// Remove empty groups
+	var nonEmptyGroups []TimeGroup
+	for _, group := range groups {
+		if len(group.Trips) > 0 || len(group.Expenses) > 0 {
+			nonEmptyGroups = append(nonEmptyGroups, group)
+		}
+	}
+
+	return nonEmptyGroups
+}
+
+// renderTimeGroup renders a time group with its trips and expenses
+func (m *Model) renderTimeGroup(group TimeGroup) string {
+	var s strings.Builder
+
+	// Group header with summary
+	headerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#FF5F87")).
+		Padding(0, 1)
+
+	summaryStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#626262")).
+		Padding(0, 1)
+
+	// Calculate group totals
+	totalMiles := model.CalculateTotalMiles(group.Trips)
+	totalReimbursement := model.CalculateReimbursement(group.Trips, m.RatePerMile)
+	totalExpenses := model.CalculateTotalExpenses(group.Expenses)
+
+	s.WriteString(headerStyle.Render(group.Title) + "\n")
+	s.WriteString(summaryStyle.Render(fmt.Sprintf("Total Miles: %.2f | Mileage Amount: $%.2f | Expenses: $%.2f\n",
+		totalMiles, totalReimbursement, totalExpenses)))
+
+	// Render trips
+	if len(group.Trips) > 0 {
+		s.WriteString("\nTrips:\n")
+		for i, t := range group.Trips {
+			style := lipgloss.NewStyle()
+			if i == m.SelectedTrip {
+				style = style.Foreground(lipgloss.Color("#FF5F87"))
+			}
+			// Calculate display miles based on trip type
+			displayMiles := t.Miles
+			if t.Type == "round" {
+				displayMiles = t.Miles * 2
+			}
+			tripType := "→"
+			if t.Type == "round" {
+				tripType = "↔"
+			}
+			s.WriteString(style.Render(fmt.Sprintf("  %s - %s %s %s (%.2f miles)\n",
+				t.Date, t.Origin, tripType, t.Destination, displayMiles)))
+		}
+	}
+
+	// Render expenses
+	if len(group.Expenses) > 0 {
+		s.WriteString("\nExpenses:\n")
+		for i, e := range group.Expenses {
+			style := lipgloss.NewStyle()
+			if i == m.SelectedExpense {
+				style = style.Foreground(lipgloss.Color("#FF5F87"))
+			}
+			s.WriteString(style.Render(fmt.Sprintf("  %s - $%.2f - %s\n",
+				e.Date, e.Amount, e.Description)))
+		}
+	}
+
+	s.WriteString("\n" + strings.Repeat("─", 50) + "\n")
+	return s.String()
 }
 
 func (m *Model) View() string {
@@ -490,8 +724,11 @@ func (m *Model) View() string {
 		Render("Nanny Tracker")
 	s.WriteString(title + "\n\n")
 
-	// Current mode
+	// Current mode and search status
 	modeText := fmt.Sprintf("Current mode: %s", m.Mode)
+	if m.SearchMode {
+		modeText += " (Search: " + m.SearchQuery + ")"
+	}
 	s.WriteString(modeText + "\n\n")
 
 	// Input field
@@ -549,49 +786,10 @@ func (m *Model) View() string {
 		}
 	}
 
-	// Trip history
-	if len(m.Trips) > 0 {
-		s.WriteString("\nTrip History:\n")
-		for i, t := range m.Trips {
-			style := lipgloss.NewStyle()
-			if i == m.SelectedTrip {
-				style = style.Foreground(lipgloss.Color("#FF5F87"))
-			}
-			// Calculate display miles based on trip type
-			displayMiles := t.Miles
-			if t.Type == "round" {
-				displayMiles = t.Miles * 2
-			}
-			s.WriteString(style.Render(fmt.Sprintf("%d. %s - %s → %s (%.2f miles, %s)\n",
-				i+1, t.Date, t.Origin, t.Destination, displayMiles, t.Type)))
-		}
-	}
-
-	// Expense history
-	if len(m.Data.Expenses) > 0 {
-		s.WriteString("\nExpense History:\n")
-		for i, e := range m.Data.Expenses {
-			style := lipgloss.NewStyle()
-			if i == m.SelectedExpense {
-				style = style.Foreground(lipgloss.Color("#FF5F87"))
-			}
-			s.WriteString(style.Render(fmt.Sprintf("%d. %s - $%.2f - %s\n",
-				i+1, e.Date, e.Amount, e.Description)))
-		}
-	}
-
-	// Total mileage and reimbursement
-	if len(m.Trips) > 0 {
-		totalMiles := model.CalculateTotalMiles(m.Trips)
-		totalReimbursement := model.CalculateReimbursement(m.Trips, m.RatePerMile)
-		s.WriteString(fmt.Sprintf("\nTotal Miles: %.2f\n", totalMiles))
-		s.WriteString(fmt.Sprintf("Total Mileage Amount: $%.2f\n", totalReimbursement))
-	}
-
-	// Total expenses
-	if len(m.Data.Expenses) > 0 {
-		totalExpenses := model.CalculateTotalExpenses(m.Data.Expenses)
-		s.WriteString(fmt.Sprintf("Total Expenses: $%.2f\n", totalExpenses))
+	// Group and display trips and expenses by time period
+	groups := m.groupByTimePeriod()
+	for _, group := range groups {
+		s.WriteString(m.renderTimeGroup(group))
 	}
 
 	// Error message
@@ -605,7 +803,8 @@ func (m *Model) View() string {
 	// Help text
 	help := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#626262")).
-		Render("\nPress Ctrl+C to quit | Ctrl+E to edit | Ctrl+D to delete | Ctrl+X for expenses | ↑/↓ to select | Tab to switch between trips/expenses")
+		Render("\nPress Ctrl+C to quit | Ctrl+E to edit | Ctrl+D to delete | Ctrl+X for expenses | " +
+			"Ctrl+F to search | Ctrl+T/W/Y/O to jump to time periods | ↑/↓ to select | Tab to switch between trips/expenses")
 	s.WriteString(help)
 
 	return s.String()
