@@ -8,31 +8,6 @@ import (
 	"github.com/lauren/nannytracker/internal/model"
 )
 
-func setupTestEnv(t *testing.T) (string, func()) {
-	tempDir, err := os.MkdirTemp("", "nannytracker-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-
-	// Create the .nannytracker directory
-	dataDir := filepath.Join(tempDir, ".nannytracker")
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		t.Fatalf("Failed to create data dir: %v", err)
-	}
-
-	// Create empty trips file
-	tripsFile := filepath.Join(dataDir, "trips.json")
-	if err := os.WriteFile(tripsFile, []byte("[]"), 0644); err != nil {
-		t.Fatalf("Failed to create trips file: %v", err)
-	}
-
-	cleanup := func() {
-		os.RemoveAll(tempDir)
-	}
-
-	return tempDir, cleanup
-}
-
 func TestStorage(t *testing.T) {
 	// Create a temporary directory for testing
 	tmpDir, err := os.MkdirTemp("", "nannytracker-test")
