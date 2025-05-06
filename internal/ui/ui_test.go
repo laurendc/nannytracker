@@ -1080,6 +1080,7 @@ func TestExpenseNavigation(t *testing.T) {
 	// Test wrapping around
 	// Move up twice to wrap to last expense
 	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = model.(*Model)
 	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
 	uiModel = model.(*Model)
 	if uiModel.SelectedExpense != 2 {
