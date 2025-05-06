@@ -201,6 +201,7 @@ type StorageData struct {
 	Trips           []Trip          `json:"trips"`
 	Expenses        []Expense       `json:"expenses"`
 	WeeklySummaries []WeeklySummary `json:"weekly_summaries"`
+	ReferenceDate   string          `json:"reference_date,omitempty"` // For testing purposes
 }
 
 // CalculateAndUpdateWeeklySummaries calculates weekly summaries and updates the storage data

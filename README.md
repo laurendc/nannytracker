@@ -8,10 +8,11 @@ A terminal-based application for tracking mileage, expenses, and calculating rei
 - Track reimbursable expenses with date, amount, and description
 - Support for single and round trips
 - Automatic mileage calculation using Google Maps API
-- Weekly summaries of mileage, expenses, and reimbursement amounts
+- **Weekly summaries** of mileage, expenses, and reimbursement amounts with improved formatting and alignment
+- **Search trips** by origin, destination, date, or type (Ctrl+F)
 - Edit and delete trips with confirmation
 - Persistent storage of trip and expense data
-- Beautiful terminal UI with keyboard navigation
+- **Beautiful terminal UI** with color highlighting for navigation and clear alignment
 
 ## Installation
 
@@ -59,9 +60,17 @@ Run the application:
 - **Ctrl+E**: Edit selected trip or expense
 - **Ctrl+D**: Delete selected trip or expense (requires confirmation)
 - **Ctrl+X**: Add new expense
-- **↑/↓**: Navigate through trips and expenses (selected item shown in theme color)
+- **Ctrl+F**: Toggle search mode (filter trips)
+- **↑/↓**: Navigate through trips and expenses (selected item shown in color)
 - **Tab**: Switch between trips and expenses list
 - **Ctrl+C**: Quit application
+
+### Searching Trips
+
+- Press **Ctrl+F** to enter search mode
+- Type a search term (origin, destination, date, or type)
+- The trip list will be filtered in real time
+- Press **Ctrl+F** again to exit search mode and return to the full list
 
 ### Adding a Trip
 
@@ -110,9 +119,17 @@ Run the application:
 3. Type 'yes' and press Enter to confirm deletion
 4. Type anything else and press Enter to cancel
 
+## Weekly Summaries
+
+- Weekly summaries are always displayed at the top of the UI
+- Each summary shows total miles, mileage amount, and expenses for the week
+- Formatting and alignment have been improved for clarity
+
 ## Development
 
 ### Running Tests
+
+All tests have been updated to match the latest UI and logic. To run the full suite:
 
 ```bash
 go test ./...

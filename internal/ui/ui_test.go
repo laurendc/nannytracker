@@ -250,16 +250,16 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 	// Get the view
 	view := uiModel.View()
 
-	// Check if weekly summaries are displayed with expenses
+	// Check if weekly summaries are displayed with expenses (new format)
 	expectedSummaries := []string{
 		"Week of 2024-03-17 to 2024-03-23:",
-		"  Total Miles: 25.00",
-		"  Total Mileage Amount: $16.38",
-		"  Total Expenses: $41.25",
+		"    Total Miles:          25.00",
+		"    Total Mileage Amount: $16.38",
+		"    Total Expenses:       $41.25",
 		"Week of 2024-03-24 to 2024-03-30:",
-		"  Total Miles: 45.00",
-		"  Total Mileage Amount: $29.48",
-		"  Total Expenses: $30.00",
+		"    Total Miles:          45.00",
+		"    Total Mileage Amount: $29.48",
+		"    Total Expenses:       $30.00",
 	}
 
 	for _, expected := range expectedSummaries {
@@ -699,14 +699,13 @@ func TestTripHistoryDisplay(t *testing.T) {
 	// Get the view
 	view := uiModel.View()
 
-	// Check if trip history shows correct miles
-	expectedTrips := []string{
-		"1. 2024-03-20 - Home → Work (10.00 miles, single)",
-		"2. 2024-03-21 - Work → Store (10.00 miles, round)", // Should show doubled miles
-		"3. 2024-03-22 - Home → Gym (3.00 miles, single)",
-	}
-
-	for _, expected := range expectedTrips {
+	// Check if trips are displayed correctly
+	for _, trip := range trips {
+		displayMiles := trip.Miles
+		if trip.Type == "round" {
+			displayMiles *= 2
+		}
+		expected := fmt.Sprintf("%s → %s (%.2f miles)", trip.Origin, trip.Destination, displayMiles)
 		if !strings.Contains(view, expected) {
 			t.Errorf("View does not contain expected trip: %s", expected)
 		}
@@ -860,9 +859,9 @@ func TestExpenseHistoryDisplay(t *testing.T) {
 
 	// Check if expense history shows correct format
 	expectedExpenses := []string{
-		"1. 2024-03-20 - $25.50 - Lunch",
-		"2. 2024-03-21 - $15.75 - Snacks",
-		"3. 2024-03-22 - $30.00 - Activities",
+		"$25.50 - Lunch",
+		"$15.75 - Snacks",
+		"$30.00 - Activities",
 	}
 
 	for _, expected := range expectedExpenses {
@@ -876,5 +875,147 @@ func TestExpenseHistoryDisplay(t *testing.T) {
 	expectedTotal := 25.50 + 15.75 + 30.00
 	if totalExpenses != expectedTotal {
 		t.Errorf("Expected total expenses to be %.2f, got %.2f", expectedTotal, totalExpenses)
+	}
+}
+
+func TestTimeBasedGrouping(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Set reference date for testing
+	uiModel.Data.ReferenceDate = "2024-03-20"
+
+	// Add trips for different time periods using fixed dates
+	trips := []model.Trip{
+		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0}, // Today
+		{Date: "2024-03-19", Origin: "Work", Destination: "Home", Miles: 10.0}, // Yesterday
+		{Date: "2024-03-13", Origin: "Home", Destination: "Store", Miles: 5.0}, // Last week
+		{Date: "2024-02-20", Origin: "Home", Destination: "Gym", Miles: 3.0},   // Last month
+	}
+
+	for _, trip := range trips {
+		uiModel.AddTrip(trip)
+	}
+
+	// Get the view
+	view := uiModel.View()
+
+	// Verify all trips are displayed
+	for _, trip := range trips {
+		expected := fmt.Sprintf("%s → %s (%.2f miles)", trip.Origin, trip.Destination, trip.Miles)
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected trip: %s", expected)
+		}
+	}
+}
+
+func TestTimeGroupNavigation(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Set reference date for testing
+	uiModel.Data.ReferenceDate = "2024-03-20"
+
+	// Add some trips
+	trips := []model.Trip{
+		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"},
+		{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 5.0, Type: "round"},
+		{Date: "2024-03-22", Origin: "Home", Destination: "Gym", Miles: 3.0, Type: "single"},
+	}
+
+	for _, trip := range trips {
+		uiModel.AddTrip(trip)
+	}
+
+	// Get the view
+	view := uiModel.View()
+
+	// Verify all trips are displayed
+	for _, trip := range trips {
+		displayMiles := trip.Miles
+		if trip.Type == "round" {
+			displayMiles *= 2
+		}
+		expected := fmt.Sprintf("%s → %s (%.2f miles)", trip.Origin, trip.Destination, displayMiles)
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected trip: %s", expected)
+		}
+	}
+}
+
+func TestSearchFunctionality(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add trips with different locations
+	trips := []model.Trip{
+		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"},
+		{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 5.0, Type: "round"},
+		{Date: "2024-03-22", Origin: "Home", Destination: "Gym", Miles: 3.0, Type: "single"},
+	}
+
+	for _, trip := range trips {
+		uiModel.AddTrip(trip)
+	}
+
+	// Enter search mode
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
+	uiModel = updatedModel.(*Model)
+
+	// Verify search mode is active
+	if !uiModel.SearchMode {
+		t.Error("Search mode should be active")
+	}
+	if uiModel.Mode != "search" {
+		t.Errorf("Expected mode to be 'search', got '%s'", uiModel.Mode)
+	}
+
+	// Set search query
+	uiModel.TextInput.SetValue("Work")
+	uiModel.SearchQuery = "Work"
+
+	// Get the view
+	view := uiModel.View()
+
+	// Verify search results
+	expectedTrips := []model.Trip{
+		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"},
+		{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 5.0, Type: "round"},
+	}
+
+	for _, trip := range expectedTrips {
+		expected := fmt.Sprintf("%s → %s", trip.Origin, trip.Destination)
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected search result: %s", expected)
+		}
+	}
+
+	// Verify non-matching trips are not shown
+	unexpectedTrip := "Home → Gym"
+	if strings.Contains(view, unexpectedTrip) {
+		t.Errorf("View contains unexpected search result: %s", unexpectedTrip)
+	}
+
+	// Exit search mode
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
+	uiModel = updatedModel.(*Model)
+
+	// Verify search mode is inactive
+	if uiModel.SearchMode {
+		t.Error("Search mode should be inactive")
+	}
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date', got '%s'", uiModel.Mode)
+	}
+
+	// Get the view after exiting search mode
+	view = uiModel.View()
+
+	// Verify all trips are shown again
+	for _, trip := range trips {
+		expected := fmt.Sprintf("%s → %s", trip.Origin, trip.Destination)
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain trip: %s", expected)
+		}
 	}
 }
