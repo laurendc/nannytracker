@@ -1019,3 +1019,84 @@ func TestSearchFunctionality(t *testing.T) {
 		}
 	}
 }
+
+func TestExpenseNavigation(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add multiple expenses
+	expenses := []model.Expense{
+		{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
+		{Date: "2024-03-21", Amount: 15.75, Description: "Snacks"},
+		{Date: "2024-03-22", Amount: 30.00, Description: "Activities"},
+	}
+
+	for _, expense := range expenses {
+		if err := uiModel.Data.AddExpense(expense); err != nil {
+			t.Fatalf("Failed to add expense: %v", err)
+		}
+	}
+
+	// Initialize selection to trips
+	uiModel.SelectedTrip = 0
+	uiModel.SelectedExpense = -1
+
+	// Switch to expenses list using Tab
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+
+	// Verify we're in expense mode
+	if uiModel.SelectedExpense != 0 {
+		t.Errorf("Expected to start at expense 0 after Tab, got %d", uiModel.SelectedExpense)
+	}
+	if uiModel.SelectedTrip != -1 {
+		t.Errorf("Expected trip selection to be -1 after Tab, got %d", uiModel.SelectedTrip)
+	}
+
+	// Test selection movement
+	var model tea.Model
+
+	// Move down to second expense
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = model.(*Model)
+	if uiModel.SelectedExpense != 1 {
+		t.Errorf("Expected selected expense to be 1, got %d", uiModel.SelectedExpense)
+	}
+
+	// Move down to third expense
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = model.(*Model)
+	if uiModel.SelectedExpense != 2 {
+		t.Errorf("Expected selected expense to be 2, got %d", uiModel.SelectedExpense)
+	}
+
+	// Move up to second expense
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = model.(*Model)
+	if uiModel.SelectedExpense != 1 {
+		t.Errorf("Expected selected expense to be 1, got %d", uiModel.SelectedExpense)
+	}
+
+	// Test wrapping around
+	// Move up twice to wrap to last expense
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = model.(*Model)
+	if uiModel.SelectedExpense != 2 {
+		t.Errorf("Expected selected expense to wrap to 2, got %d", uiModel.SelectedExpense)
+	}
+
+	// Move down to wrap to first expense
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = model.(*Model)
+	if uiModel.SelectedExpense != 0 {
+		t.Errorf("Expected selected expense to wrap to 0, got %d", uiModel.SelectedExpense)
+	}
+
+	// Test switching back to trips
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = model.(*Model)
+	if uiModel.SelectedExpense != -1 {
+		t.Errorf("Expected expense selection to be -1 after switching to trips, got %d", uiModel.SelectedExpense)
+	}
+}

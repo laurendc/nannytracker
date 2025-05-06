@@ -359,17 +359,31 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, cmd
 		case tea.KeyUp:
-			// Navigate up in the trips list
-			if m.Mode == "date" && len(m.Trips) > 0 {
-				m.SelectedTrip = (m.SelectedTrip - 1 + len(m.Trips)) % len(m.Trips)
-				m.SelectedExpense = -1
+			// Navigate up in the trips or expenses list
+			if m.Mode == "date" {
+				if m.SelectedExpense >= 0 && len(m.Data.Expenses) > 0 {
+					// Navigate expenses
+					m.SelectedExpense = (m.SelectedExpense - 1 + len(m.Data.Expenses)) % len(m.Data.Expenses)
+					m.SelectedTrip = -1
+				} else if len(m.Trips) > 0 {
+					// Navigate trips
+					m.SelectedTrip = (m.SelectedTrip - 1 + len(m.Trips)) % len(m.Trips)
+					m.SelectedExpense = -1
+				}
 			}
 			return m, cmd
 		case tea.KeyDown:
-			// Navigate down in the trips list
-			if m.Mode == "date" && len(m.Trips) > 0 {
-				m.SelectedTrip = (m.SelectedTrip + 1) % len(m.Trips)
-				m.SelectedExpense = -1
+			// Navigate down in the trips or expenses list
+			if m.Mode == "date" {
+				if m.SelectedExpense >= 0 && len(m.Data.Expenses) > 0 {
+					// Navigate expenses
+					m.SelectedExpense = (m.SelectedExpense + 1) % len(m.Data.Expenses)
+					m.SelectedTrip = -1
+				} else if len(m.Trips) > 0 {
+					// Navigate trips
+					m.SelectedTrip = (m.SelectedTrip + 1) % len(m.Trips)
+					m.SelectedExpense = -1
+				}
 			}
 			return m, cmd
 		case tea.KeyTab:
@@ -381,6 +395,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else if m.SelectedTrip == -1 && len(m.Trips) > 0 {
 					m.SelectedTrip = 0
 					m.SelectedExpense = -1
+				} else if m.SelectedExpense >= 0 {
+					// If we're already in expenses, switch to trips
+					m.SelectedTrip = 0
+					m.SelectedExpense = -1
+				} else if m.SelectedTrip >= 0 {
+					// If we're already in trips, switch to expenses
+					m.SelectedExpense = 0
+					m.SelectedTrip = -1
 				}
 			}
 			return m, cmd
@@ -524,10 +546,10 @@ func (m *Model) View() string {
 	s.WriteString("Controls:\n")
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#888888")).
-		SetString("↑/↓: Navigate trips\n" +
+		SetString("↑/↓: Navigate trips and expenses\n" +
 			"Tab: Switch between trips and expenses\n" +
-			"Ctrl+E: Edit selected trip\n" +
-			"Ctrl+D: Delete selected trip\n" +
+			"Ctrl+E: Edit selected trip or expense\n" +
+			"Ctrl+D: Delete selected trip or expense\n" +
 			"Ctrl+F: Toggle search mode\n" +
 			"Ctrl+X: Add expense\n")
 	s.WriteString(helpStyle.String())
