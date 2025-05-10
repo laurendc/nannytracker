@@ -1101,3 +1101,141 @@ func TestExpenseNavigation(t *testing.T) {
 		t.Errorf("Expected expense selection to be -1 after switching to trips, got %d", uiModel.SelectedExpense)
 	}
 }
+
+func TestConvertTripToRecurring(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Set reference date for testing
+	uiModel.Data.ReferenceDate = "2024-03-20"
+
+	// Add a trip first
+	originalTrip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.5,
+		Type:        "single",
+	}
+	uiModel.AddTrip(originalTrip)
+
+	// Select the trip
+	uiModel.SelectedTrip = 0
+
+	// Enter convert mode
+	var updatedModel tea.Model
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	uiModel = updatedModel.(*Model)
+
+	// Verify we're in convert mode
+	if uiModel.Mode != "convert_to_recurring" {
+		t.Errorf("Expected mode to be 'convert_to_recurring', got '%s'", uiModel.Mode)
+	}
+
+	// Verify the trip data was copied to the recurring trip
+	if uiModel.CurrentRecurring.Origin != originalTrip.Origin {
+		t.Errorf("Expected origin to be '%s', got '%s'", originalTrip.Origin, uiModel.CurrentRecurring.Origin)
+	}
+	if uiModel.CurrentRecurring.Destination != originalTrip.Destination {
+		t.Errorf("Expected destination to be '%s', got '%s'", originalTrip.Destination, uiModel.CurrentRecurring.Destination)
+	}
+	if uiModel.CurrentRecurring.Miles != originalTrip.Miles {
+		t.Errorf("Expected miles to be %.2f, got %.2f", originalTrip.Miles, uiModel.CurrentRecurring.Miles)
+	}
+	if uiModel.CurrentRecurring.StartDate != originalTrip.Date {
+		t.Errorf("Expected start date to be '%s', got '%s'", originalTrip.Date, uiModel.CurrentRecurring.StartDate)
+	}
+	if uiModel.CurrentRecurring.Type != originalTrip.Type {
+		t.Errorf("Expected type to be '%s', got '%s'", originalTrip.Type, uiModel.CurrentRecurring.Type)
+	}
+
+	// Test invalid weekday
+	uiModel.TextInput.SetValue("7") // Invalid weekday
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	if uiModel.Err == nil {
+		t.Error("Expected error for invalid weekday")
+	}
+	if !strings.Contains(uiModel.Err.Error(), "invalid weekday") {
+		t.Errorf("Expected error about invalid weekday, got: %v", uiModel.Err)
+	}
+
+	// Set end date to end of March 2024 before setting the weekday
+	uiModel.CurrentRecurring.EndDate = "2024-03-31"
+
+	// Test valid weekday (Wednesday is 3)
+	uiModel.TextInput.SetValue("3")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Verify the recurring trip was added
+	if len(uiModel.RecurringTrips) != 1 {
+		t.Errorf("Expected 1 recurring trip, got %d", len(uiModel.RecurringTrips))
+	}
+
+	recurringTrip := uiModel.RecurringTrips[0]
+	if recurringTrip.Origin != originalTrip.Origin {
+		t.Errorf("Expected origin to be '%s', got '%s'", originalTrip.Origin, recurringTrip.Origin)
+	}
+	if recurringTrip.Destination != originalTrip.Destination {
+		t.Errorf("Expected destination to be '%s', got '%s'", originalTrip.Destination, recurringTrip.Destination)
+	}
+	if recurringTrip.Miles != originalTrip.Miles {
+		t.Errorf("Expected miles to be %.2f, got %.2f", originalTrip.Miles, recurringTrip.Miles)
+	}
+	if recurringTrip.StartDate != originalTrip.Date {
+		t.Errorf("Expected start date to be '%s', got '%s'", originalTrip.Date, recurringTrip.StartDate)
+	}
+	if recurringTrip.Type != originalTrip.Type {
+		t.Errorf("Expected type to be '%s', got '%s'", originalTrip.Type, recurringTrip.Type)
+	}
+	if recurringTrip.Weekday != 3 {
+		t.Errorf("Expected weekday to be 3, got %d", recurringTrip.Weekday)
+	}
+	if recurringTrip.EndDate != "2024-03-31" {
+		t.Errorf("Expected end date to be '2024-03-31', got '%s'", recurringTrip.EndDate)
+	}
+
+	// Verify mode was reset
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to reset to 'date', got '%s'", uiModel.Mode)
+	}
+
+	// Verify trips were generated (should be 2 Wednesdays: March 20 and March 27)
+	if len(uiModel.Trips) != 2 {
+		t.Errorf("Expected 2 trips to be generated, got %d", len(uiModel.Trips))
+	}
+
+	// Verify the generated trips are on the correct dates
+	dates := make(map[string]bool)
+	for _, trip := range uiModel.Trips {
+		dates[trip.Date] = true
+	}
+	if !dates["2024-03-20"] {
+		t.Error("Expected trip on March 20, 2024")
+	}
+	if !dates["2024-03-27"] {
+		t.Error("Expected trip on March 27, 2024")
+	}
+}
+
+func TestConvertTripToRecurringWithNoSelection(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Try to convert without selecting a trip
+	var updatedModel tea.Model
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	uiModel = updatedModel.(*Model)
+
+	// Verify we're in recurring trip creation mode
+	if uiModel.Mode != "recurring_date" {
+		t.Errorf("Expected mode to be 'recurring_date', got '%s'", uiModel.Mode)
+	}
+
+	// Verify no recurring trip was created
+	if len(uiModel.RecurringTrips) != 0 {
+		t.Errorf("Expected 0 recurring trips, got %d", len(uiModel.RecurringTrips))
+	}
+}
