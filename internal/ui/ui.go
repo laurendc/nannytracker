@@ -168,26 +168,38 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.CurrentRecurring.Weekday = weekday
 
+				// Set end date to end of current month
+				var now time.Time
+				if m.Data.ReferenceDate != "" {
+					now, err = time.Parse("2006-01-02", m.Data.ReferenceDate)
+					if err != nil {
+						m.Err = err
+						return m, cmd
+					}
+				} else {
+					now = time.Now()
+				}
+				endOfMonth := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, now.Location())
+				m.CurrentRecurring.EndDate = endOfMonth.Format("2006-01-02")
+
 				// Validate the recurring trip
 				if err := m.CurrentRecurring.Validate(); err != nil {
 					m.Err = fmt.Errorf("invalid recurring trip: %w", err)
 					return m, cmd
 				}
 
+				// Delete the original trip first
+				if err := m.Data.DeleteTrip(m.SelectedTrip); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+				m.Trips = m.Data.Trips
+
 				// Add the recurring trip
 				if err := m.Data.AddRecurringTrip(m.CurrentRecurring); err != nil {
 					m.Err = err
 					return m, cmd
 				}
-
-				// Delete the original trip
-				if err := m.Data.DeleteTrip(m.SelectedTrip); err != nil {
-					m.Err = err
-					return m, cmd
-				}
-
-				// Update the UI state
-				m.Trips = m.Data.Trips
 				m.RecurringTrips = m.Data.RecurringTrips
 
 				// Generate trips from recurring trips
@@ -195,6 +207,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Err = err
 					return m, cmd
 				}
+				m.Trips = m.Data.Trips
 
 				// Update weekly summaries
 				model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
@@ -376,6 +389,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, cmd
 					}
 
+					// Update the UI state with the generated trips
+					m.Trips = m.Data.Trips
+
+					// Update weekly summaries
 					model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
 					if err := m.Storage.SaveData(m.Data); err != nil {
 						m.Err = err

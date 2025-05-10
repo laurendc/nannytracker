@@ -324,9 +324,10 @@ func (rt RecurringTrip) GenerateTrips(startDate, endDate time.Time) []Trip {
 	var trips []Trip
 	current := startDate
 
-	// Find the first occurrence of the weekday after or on the start date
-	for current.Weekday() != time.Weekday(rt.Weekday) {
-		current = current.AddDate(0, 0, 1)
+	// If the start date is not the target weekday, find the next occurrence
+	if current.Weekday() != time.Weekday(rt.Weekday) {
+		daysUntilNext := (rt.Weekday - int(current.Weekday()) + 7) % 7
+		current = current.AddDate(0, 0, daysUntilNext)
 	}
 
 	// Generate trips for each occurrence until end date
@@ -348,8 +349,23 @@ func (rt RecurringTrip) GenerateTrips(startDate, endDate time.Time) []Trip {
 // GenerateTripsFromRecurring generates individual trips from all recurring trips
 func (d *StorageData) GenerateTripsFromRecurring() error {
 	// Get current date and end of current month
-	now := time.Now()
+	var now time.Time
+	var err error
+	if d.ReferenceDate != "" {
+		now, err = time.Parse("2006-01-02", d.ReferenceDate)
+		if err != nil {
+			return err
+		}
+	} else {
+		now = time.Now()
+	}
 	endOfMonth := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, now.Location())
+
+	// Create a map to track existing trip dates
+	existingDates := make(map[string]bool)
+	for _, trip := range d.Trips {
+		existingDates[trip.Date] = true
+	}
 
 	// Generate trips for each recurring trip
 	for _, rt := range d.RecurringTrips {
@@ -373,8 +389,12 @@ func (d *StorageData) GenerateTripsFromRecurring() error {
 		// Generate trips and add them to the storage
 		trips := rt.GenerateTrips(startDate, endDate)
 		for _, trip := range trips {
-			if err := d.AddTrip(trip); err != nil {
-				return err
+			// Only add the trip if it doesn't already exist for that date
+			if !existingDates[trip.Date] {
+				if err := d.AddTrip(trip); err != nil {
+					return err
+				}
+				existingDates[trip.Date] = true
 			}
 		}
 	}

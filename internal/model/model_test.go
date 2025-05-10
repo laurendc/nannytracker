@@ -753,12 +753,3 @@ func TestAddingTrip(t *testing.T) {
 		t.Errorf("Expected type %v, got %v", trip.Type, data.Trips[0].Type)
 	}
 }
-
-// AddTrip adds a new trip to the storage data
-func (d *StorageData) AddTrip(trip Trip) error {
-	if err := trip.Validate(); err != nil {
-		return err
-	}
-	d.Trips = append(d.Trips, trip)
-	return nil
-}

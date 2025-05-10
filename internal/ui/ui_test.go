@@ -1106,6 +1106,9 @@ func TestConvertTripToRecurring(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
+	// Set reference date for testing
+	uiModel.Data.ReferenceDate = "2024-03-20"
+
 	// Add a trip first
 	originalTrip := model.Trip{
 		Date:        "2024-03-20",
@@ -1158,15 +1161,13 @@ func TestConvertTripToRecurring(t *testing.T) {
 		t.Errorf("Expected error about invalid weekday, got: %v", uiModel.Err)
 	}
 
-	// Test valid weekday
-	uiModel.TextInput.SetValue("1") // Monday
+	// Set end date to end of March 2024 before setting the weekday
+	uiModel.CurrentRecurring.EndDate = "2024-03-31"
+
+	// Test valid weekday (Wednesday is 3)
+	uiModel.TextInput.SetValue("3")
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	uiModel = updatedModel.(*Model)
-
-	// Verify the original trip was deleted
-	if len(uiModel.Trips) != 0 {
-		t.Errorf("Expected 0 trips after conversion, got %d", len(uiModel.Trips))
-	}
 
 	// Verify the recurring trip was added
 	if len(uiModel.RecurringTrips) != 1 {
@@ -1189,8 +1190,11 @@ func TestConvertTripToRecurring(t *testing.T) {
 	if recurringTrip.Type != originalTrip.Type {
 		t.Errorf("Expected type to be '%s', got '%s'", originalTrip.Type, recurringTrip.Type)
 	}
-	if recurringTrip.Weekday != 1 {
-		t.Errorf("Expected weekday to be 1, got %d", recurringTrip.Weekday)
+	if recurringTrip.Weekday != 3 {
+		t.Errorf("Expected weekday to be 3, got %d", recurringTrip.Weekday)
+	}
+	if recurringTrip.EndDate != "2024-03-31" {
+		t.Errorf("Expected end date to be '2024-03-31', got '%s'", recurringTrip.EndDate)
 	}
 
 	// Verify mode was reset
@@ -1198,14 +1202,21 @@ func TestConvertTripToRecurring(t *testing.T) {
 		t.Errorf("Expected mode to reset to 'date', got '%s'", uiModel.Mode)
 	}
 
-	// Verify the recurring trip generates trips
-	if err := uiModel.Data.GenerateTripsFromRecurring(); err != nil {
-		t.Errorf("Failed to generate trips from recurring trip: %v", err)
+	// Verify trips were generated (should be 2 Wednesdays: March 20 and March 27)
+	if len(uiModel.Trips) != 2 {
+		t.Errorf("Expected 2 trips to be generated, got %d", len(uiModel.Trips))
 	}
 
-	// Verify trips were generated
-	if len(uiModel.Trips) == 0 {
-		t.Error("Expected trips to be generated from recurring trip")
+	// Verify the generated trips are on the correct dates
+	dates := make(map[string]bool)
+	for _, trip := range uiModel.Trips {
+		dates[trip.Date] = true
+	}
+	if !dates["2024-03-20"] {
+		t.Error("Expected trip on March 20, 2024")
+	}
+	if !dates["2024-03-27"] {
+		t.Error("Expected trip on March 27, 2024")
 	}
 }
 
