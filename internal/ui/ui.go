@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,21 +17,24 @@ import (
 
 // Model represents the UI state
 type Model struct {
-	TextInput       textinput.Model
-	Trips           []model.Trip
-	CurrentTrip     model.Trip
-	CurrentExpense  model.Expense
-	Mode            string // "date", "origin", "destination", "type", "edit", "delete", "delete_confirm", "expense_date", "expense_amount", "expense_description", "expense_edit", "expense_delete_confirm", "search"
-	Err             error
-	Storage         storage.Storage
-	RatePerMile     float64
-	MapsClient      maps.DistanceCalculator
-	Data            *model.StorageData
-	EditIndex       int    // Index of trip being edited
-	SelectedTrip    int    // Index of selected trip for operations
-	SelectedExpense int    // Index of selected expense for operations
-	SearchQuery     string // Current search query
-	SearchMode      bool   // Whether we're in search mode
+	TextInput         textinput.Model
+	Trips             []model.Trip
+	RecurringTrips    []model.RecurringTrip
+	CurrentTrip       model.Trip
+	CurrentRecurring  model.RecurringTrip
+	CurrentExpense    model.Expense
+	Mode              string // "date", "origin", "destination", "type", "edit", "delete", "delete_confirm", "expense_date", "expense_amount", "expense_description", "expense_edit", "expense_delete_confirm", "search", "recurring_date", "recurring_weekday", "recurring_end_date", "convert_to_recurring"
+	Err               error
+	Storage           storage.Storage
+	RatePerMile       float64
+	MapsClient        maps.DistanceCalculator
+	Data              *model.StorageData
+	EditIndex         int    // Index of trip being edited
+	SelectedTrip      int    // Index of selected trip for operations
+	SelectedRecurring int    // Index of selected recurring trip for operations
+	SelectedExpense   int    // Index of selected expense for operations
+	SearchQuery       string // Current search query
+	SearchMode        bool   // Whether we're in search mode
 }
 
 // New creates a new UI model with a mock maps client (for backward compatibility)
@@ -95,7 +99,7 @@ func (m *Model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// Update handles UI state updates based on input
+// Update handles messages and updates the model accordingly
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -130,14 +134,82 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.TextInput.Placeholder = "Enter search term..."
 			}
 			return m, cmd
-		case tea.KeyEnter:
-			if m.Mode == "search" {
-				m.SearchQuery = m.TextInput.Value()
-				if m.SearchQuery == "" {
-					m.SearchMode = false
-					m.Mode = "date"
-					m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+		case tea.KeyCtrlR:
+			// Toggle recurring trip mode or convert selected trip to recurring
+			if m.Mode == "date" {
+				if m.SelectedTrip >= 0 && m.SelectedTrip < len(m.Trips) {
+					// Convert selected trip to recurring
+					m.CurrentTrip = m.Trips[m.SelectedTrip]
+					m.CurrentRecurring = model.RecurringTrip{
+						Origin:      m.CurrentTrip.Origin,
+						Destination: m.CurrentTrip.Destination,
+						Miles:       m.CurrentTrip.Miles,
+						StartDate:   m.CurrentTrip.Date,
+						Type:        m.CurrentTrip.Type,
+					}
+					m.Mode = "convert_to_recurring"
+					m.TextInput.Placeholder = "Enter weekday (0-6, where 0 is Sunday)..."
+				} else {
+					// Start new recurring trip
+					m.Mode = "recurring_date"
+					m.TextInput.Placeholder = "Enter start date (YYYY-MM-DD)..."
 				}
+			} else if strings.HasPrefix(m.Mode, "recurring_") || m.Mode == "convert_to_recurring" {
+				m.Mode = "date"
+				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+			}
+			return m, cmd
+		case tea.KeyEnter:
+			if m.Mode == "convert_to_recurring" {
+				weekday, err := strconv.Atoi(m.TextInput.Value())
+				if err != nil || weekday < 0 || weekday > 6 {
+					m.Err = fmt.Errorf("invalid weekday: must be between 0 and 6")
+					return m, cmd
+				}
+				m.CurrentRecurring.Weekday = weekday
+
+				// Validate the recurring trip
+				if err := m.CurrentRecurring.Validate(); err != nil {
+					m.Err = fmt.Errorf("invalid recurring trip: %w", err)
+					return m, cmd
+				}
+
+				// Add the recurring trip
+				if err := m.Data.AddRecurringTrip(m.CurrentRecurring); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+
+				// Delete the original trip
+				if err := m.Data.DeleteTrip(m.SelectedTrip); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+
+				// Update the UI state
+				m.Trips = m.Data.Trips
+				m.RecurringTrips = m.Data.RecurringTrips
+
+				// Generate trips from recurring trips
+				if err := m.Data.GenerateTripsFromRecurring(); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+
+				// Update weekly summaries
+				model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+				if err := m.Storage.SaveData(m.Data); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+
+				// Reset state
+				m.CurrentRecurring = model.RecurringTrip{}
+				m.Mode = "date"
+				m.TextInput.Reset()
+				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+			} else if m.Mode == "search" {
+				m.SearchQuery = m.TextInput.Value()
 			} else if m.Mode == "date" {
 				if m.TextInput.Value() == "" {
 					return m, cmd
@@ -158,6 +230,58 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.TextInput.Reset()
 				m.Mode = "origin"
 				m.TextInput.Placeholder = "Enter origin location..."
+			} else if m.Mode == "recurring_date" {
+				if m.TextInput.Value() == "" {
+					return m, cmd
+				}
+				// Create a temporary recurring trip to validate the date
+				tempTrip := model.RecurringTrip{
+					StartDate:   m.TextInput.Value(),
+					Origin:      "temp",   // Dummy value for validation
+					Destination: "temp",   // Dummy value for validation
+					Miles:       1.0,      // Dummy value for validation
+					Type:        "single", // Dummy value for validation
+					Weekday:     0,        // Dummy value for validation
+				}
+				if err := tempTrip.Validate(); err != nil {
+					m.Err = err
+					return m, cmd
+				}
+				m.CurrentRecurring.StartDate = m.TextInput.Value()
+				m.TextInput.Reset()
+				m.Mode = "recurring_weekday"
+				m.TextInput.Placeholder = "Enter weekday (0-6, where 0 is Sunday)..."
+			} else if m.Mode == "recurring_weekday" {
+				weekday, err := strconv.Atoi(m.TextInput.Value())
+				if err != nil || weekday < 0 || weekday > 6 {
+					m.Err = fmt.Errorf("invalid weekday: must be between 0 and 6")
+					return m, cmd
+				}
+				m.CurrentRecurring.Weekday = weekday
+				m.TextInput.Reset()
+				m.Mode = "origin"
+				m.TextInput.Placeholder = "Enter origin location..."
+			} else if m.Mode == "recurring_end_date" {
+				if m.TextInput.Value() != "" {
+					// Create a temporary recurring trip to validate the end date
+					tempTrip := model.RecurringTrip{
+						StartDate:   m.CurrentRecurring.StartDate,
+						EndDate:     m.TextInput.Value(),
+						Origin:      "temp",   // Dummy value for validation
+						Destination: "temp",   // Dummy value for validation
+						Miles:       1.0,      // Dummy value for validation
+						Type:        "single", // Dummy value for validation
+						Weekday:     0,        // Dummy value for validation
+					}
+					if err := tempTrip.Validate(); err != nil {
+						m.Err = err
+						return m, cmd
+					}
+					m.CurrentRecurring.EndDate = m.TextInput.Value()
+				}
+				m.TextInput.Reset()
+				m.Mode = "origin"
+				m.TextInput.Placeholder = "Enter origin location..."
 			} else if m.Mode == "origin" {
 				if m.TextInput.Value() == "" && m.EditIndex >= 0 {
 					// Keep existing value if no new input
@@ -165,7 +289,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Mode = "destination"
 					m.TextInput.Placeholder = "Enter destination location..."
 				} else {
-					m.CurrentTrip.Origin = m.TextInput.Value()
+					if strings.HasPrefix(m.Mode, "recurring_") {
+						m.CurrentRecurring.Origin = m.TextInput.Value()
+					} else {
+						m.CurrentTrip.Origin = m.TextInput.Value()
+					}
 					m.TextInput.Reset()
 					m.Mode = "destination"
 					m.TextInput.Placeholder = "Enter destination location..."
@@ -177,14 +305,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.Mode = "type"
 					m.TextInput.Placeholder = "Enter trip type (single/round)..."
 				} else {
-					m.CurrentTrip.Destination = m.TextInput.Value()
-					// Calculate miles using maps client
-					miles, err := m.MapsClient.CalculateDistance(context.Background(), m.CurrentTrip.Origin, m.CurrentTrip.Destination)
-					if err != nil {
-						m.Err = fmt.Errorf("failed to calculate distance: %w", err)
-						return m, cmd
+					if strings.HasPrefix(m.Mode, "recurring_") {
+						m.CurrentRecurring.Destination = m.TextInput.Value()
+						// Calculate miles using maps client
+						miles, err := m.MapsClient.CalculateDistance(context.Background(), m.CurrentRecurring.Origin, m.CurrentRecurring.Destination)
+						if err != nil {
+							m.Err = fmt.Errorf("failed to calculate distance: %w", err)
+							return m, cmd
+						}
+						m.CurrentRecurring.Miles = miles
+					} else {
+						m.CurrentTrip.Destination = m.TextInput.Value()
+						// Calculate miles using maps client
+						miles, err := m.MapsClient.CalculateDistance(context.Background(), m.CurrentTrip.Origin, m.CurrentTrip.Destination)
+						if err != nil {
+							m.Err = fmt.Errorf("failed to calculate distance: %w", err)
+							return m, cmd
+						}
+						m.CurrentTrip.Miles = miles
 					}
-					m.CurrentTrip.Miles = miles
 					m.TextInput.Reset()
 					m.Mode = "type"
 					m.TextInput.Placeholder = "Enter trip type (single/round)..."
@@ -203,41 +342,86 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.Err = fmt.Errorf("invalid trip type: %s. Must be 'single' or 'round'", tripType)
 						return m, cmd
 					}
-					m.CurrentTrip.Type = tripType
+					if strings.HasPrefix(m.Mode, "recurring_") {
+						m.CurrentRecurring.Type = tripType
+					} else {
+						m.CurrentTrip.Type = tripType
+					}
 				}
 
-				// Validate the trip before saving
-				if err := m.CurrentTrip.Validate(); err != nil {
-					m.Err = fmt.Errorf("invalid trip: %w", err)
-					return m, cmd
-				}
+				if strings.HasPrefix(m.Mode, "recurring_") {
+					// Validate the recurring trip before saving
+					if err := m.CurrentRecurring.Validate(); err != nil {
+						m.Err = fmt.Errorf("invalid recurring trip: %w", err)
+						return m, cmd
+					}
 
-				if m.EditIndex >= 0 {
-					// Update existing trip
-					if err := m.Data.EditTrip(m.EditIndex, m.CurrentTrip); err != nil {
+					if m.EditIndex >= 0 {
+						// Update existing recurring trip
+						if err := m.Data.EditRecurringTrip(m.EditIndex, m.CurrentRecurring); err != nil {
+							m.Err = err
+							return m, cmd
+						}
+						m.RecurringTrips[m.EditIndex] = m.CurrentRecurring
+					} else {
+						// Add new recurring trip
+						newTrip := m.CurrentRecurring // Create a copy to avoid reference issues
+						m.Data.RecurringTrips = append(m.Data.RecurringTrips, newTrip)
+						m.RecurringTrips = m.Data.RecurringTrips
+					}
+
+					// Generate trips from recurring trips
+					if err := m.Data.GenerateTripsFromRecurring(); err != nil {
 						m.Err = err
 						return m, cmd
 					}
-					m.Trips[m.EditIndex] = m.CurrentTrip
+
+					model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+					if err := m.Storage.SaveData(m.Data); err != nil {
+						m.Err = err
+						return m, cmd
+					}
+
+					// Reset state
+					m.EditIndex = -1
+					m.CurrentRecurring = model.RecurringTrip{}
+					m.Mode = "date"
+					m.TextInput.Reset()
+					m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
 				} else {
-					// Add new trip
-					newTrip := m.CurrentTrip // Create a copy to avoid reference issues
-					m.Data.Trips = append(m.Data.Trips, newTrip)
-					m.Trips = m.Data.Trips
-				}
+					// Validate the trip before saving
+					if err := m.CurrentTrip.Validate(); err != nil {
+						m.Err = fmt.Errorf("invalid trip: %w", err)
+						return m, cmd
+					}
 
-				model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
-				if err := m.Storage.SaveData(m.Data); err != nil {
-					m.Err = err
-					return m, cmd
-				}
+					if m.EditIndex >= 0 {
+						// Update existing trip
+						if err := m.Data.EditTrip(m.EditIndex, m.CurrentTrip); err != nil {
+							m.Err = err
+							return m, cmd
+						}
+						m.Trips[m.EditIndex] = m.CurrentTrip
+					} else {
+						// Add new trip
+						newTrip := m.CurrentTrip // Create a copy to avoid reference issues
+						m.Data.Trips = append(m.Data.Trips, newTrip)
+						m.Trips = m.Data.Trips
+					}
 
-				// Reset state
-				m.EditIndex = -1
-				m.CurrentTrip = model.Trip{}
-				m.Mode = "date"
-				m.TextInput.Reset()
-				m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+					model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+					if err := m.Storage.SaveData(m.Data); err != nil {
+						m.Err = err
+						return m, cmd
+					}
+
+					// Reset state
+					m.EditIndex = -1
+					m.CurrentTrip = model.Trip{}
+					m.Mode = "date"
+					m.TextInput.Reset()
+					m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+				}
 			} else if m.Mode == "edit" {
 				if m.TextInput.Value() != "" {
 					// Create a temporary trip to validate the date
@@ -504,6 +688,31 @@ func (m *Model) View() string {
 		displayTrips = m.filterBySearch()
 	}
 
+	// Show recurring trips
+	if len(m.RecurringTrips) > 0 {
+		s.WriteString(headerStyle.Render("Recurring Trips:") + "\n")
+		for i, trip := range m.RecurringTrips {
+			weekday := time.Weekday(trip.Weekday).String()
+			displayMiles := trip.Miles
+			if trip.Type == "round" {
+				displayMiles *= 2
+			}
+			tripLine := fmt.Sprintf("%s → %s (%.2f miles) [%s] - Every %s",
+				trip.Origin, trip.Destination, displayMiles, trip.Type, weekday)
+
+			// Apply appropriate style based on selection/edit state
+			if m.EditIndex == i {
+				tripLine = editingStyle.Render("> " + tripLine)
+			} else if m.SelectedRecurring == i {
+				tripLine = selectedStyle.Render("* " + tripLine)
+			} else {
+				tripLine = normalStyle.Render("  " + tripLine)
+			}
+			s.WriteString(tripLine + "\n")
+		}
+		s.WriteString("\n")
+	}
+
 	// Show trips
 	if len(displayTrips) > 0 {
 		s.WriteString(headerStyle.Render("Trips:") + "\n")
@@ -551,7 +760,8 @@ func (m *Model) View() string {
 			"Ctrl+E: Edit selected trip or expense\n" +
 			"Ctrl+D: Delete selected trip or expense\n" +
 			"Ctrl+F: Toggle search mode\n" +
-			"Ctrl+X: Add expense\n")
+			"Ctrl+X: Add expense\n" +
+			"Ctrl+R: Toggle recurring trip mode or convert selected trip to recurring\n")
 	s.WriteString(helpStyle.String())
 
 	return s.String()
