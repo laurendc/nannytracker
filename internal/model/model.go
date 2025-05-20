@@ -169,6 +169,8 @@ type WeeklySummary struct {
 	TotalMiles    float64
 	TotalAmount   float64
 	TotalExpenses float64
+	Trips         []Trip    // Itemized list of trips for this week
+	Expenses      []Expense // Itemized list of expenses for this week
 }
 
 // CalculateWeeklySummaries groups trips and expenses by week and calculates totals
@@ -243,6 +245,8 @@ func CalculateWeeklySummaries(trips []Trip, expenses []Expense, ratePerMile floa
 			TotalMiles:    totalMiles,
 			TotalAmount:   totalAmount,
 			TotalExpenses: totalExpenses,
+			Trips:         weekTrips,
+			Expenses:      weekExpenses,
 		})
 	}
 

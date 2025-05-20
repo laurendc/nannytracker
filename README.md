@@ -9,7 +9,7 @@ A terminal-based application for tracking mileage, expenses, and calculating rei
 - Support for single and round trips
 - Support for recurring trips with weekly scheduling
 - Automatic mileage calculation using Google Maps API
-- **Weekly summaries** of mileage, expenses, and reimbursement amounts with improved formatting and alignment
+- **Weekly summaries**: View a summary of your trips and expenses for each week. Use the left (←) and right (→) arrow keys to navigate between weeks.
 - **Search trips** by origin, destination, date, or type (Ctrl+F)
 - Edit and delete trips with confirmation
 - Persistent storage of trip and expense data
