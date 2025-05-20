@@ -572,53 +572,6 @@ func TestDeleteTrip(t *testing.T) {
 	}
 }
 
-func TestTripSelection(t *testing.T) {
-	uiModel, cleanup := setupTestUI(t)
-	defer cleanup()
-
-	// Add test trips
-	trip1 := model.Trip{
-		Date:        "2024-03-20",
-		Origin:      "Home",
-		Destination: "Work",
-		Miles:       5.0,
-		Type:        "single",
-	}
-	trip2 := model.Trip{
-		Date:        "2024-03-21",
-		Origin:      "Work",
-		Destination: "Store",
-		Miles:       3.0,
-		Type:        "single",
-	}
-	uiModel.AddTrip(trip1)
-	uiModel.AddTrip(trip2)
-
-	// Set active tab to Trips
-	uiModel.ActiveTab = TabTrips
-
-	// Test initial selection
-	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
-	uiModel = updatedModel.(*Model)
-	if uiModel.SelectedTrip != 0 {
-		t.Errorf("Expected selected trip to be 0, got %d", uiModel.SelectedTrip)
-	}
-
-	// Test moving selection down
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
-	uiModel = updatedModel.(*Model)
-	if uiModel.SelectedTrip != 1 {
-		t.Errorf("Expected selected trip to be 1, got %d", uiModel.SelectedTrip)
-	}
-
-	// Test moving selection up
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
-	uiModel = updatedModel.(*Model)
-	if uiModel.SelectedTrip != 0 {
-		t.Errorf("Expected selected trip to be 0, got %d", uiModel.SelectedTrip)
-	}
-}
-
 func TestTripHistoryDisplay(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
@@ -649,10 +602,22 @@ func TestTripHistoryDisplay(t *testing.T) {
 	uiModel.AddTrip(trip2)
 	uiModel.AddTrip(trip3)
 
+	// Add more trips to trigger pagination
+	for i := 0; i < 15; i++ {
+		trip := model.Trip{
+			Date:        fmt.Sprintf("2024-03-%02d", i+23),
+			Origin:      "Home",
+			Destination: "Work",
+			Miles:       5.0,
+			Type:        "single",
+		}
+		uiModel.AddTrip(trip)
+	}
+
 	// Set active tab to Trips
 	uiModel.ActiveTab = TabTrips
 
-	// Check if trips are displayed
+	// Check if trips are displayed with pagination
 	view := uiModel.View()
 	expectedTrips := []string{
 		"Home → Work (10.00 miles)",
@@ -663,6 +628,31 @@ func TestTripHistoryDisplay(t *testing.T) {
 		if !strings.Contains(view, trip) {
 			t.Errorf("View does not contain expected trip: %s", trip)
 		}
+	}
+
+	// Check if pagination info is displayed
+	if !strings.Contains(view, "Page 1 of") {
+		t.Error("View does not contain pagination information")
+	}
+
+	// Test page navigation
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyRight})
+	uiModel = updatedModel.(*Model)
+	if uiModel.CurrentPage != 1 {
+		t.Errorf("Expected current page to be 1, got %d", uiModel.CurrentPage)
+	}
+
+	// Check if second page is displayed
+	view = uiModel.View()
+	if !strings.Contains(view, "Page 2 of") {
+		t.Error("View does not contain second page information")
+	}
+
+	// Test going back to first page
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	uiModel = updatedModel.(*Model)
+	if uiModel.CurrentPage != 0 {
+		t.Errorf("Expected current page to be 0, got %d", uiModel.CurrentPage)
 	}
 }
 
@@ -846,6 +836,18 @@ func TestSearchFunctionality(t *testing.T) {
 	uiModel.AddTrip(trip2)
 	uiModel.AddTrip(trip3)
 
+	// Add more trips to trigger pagination for the initial search
+	for i := 0; i < 15; i++ {
+		trip := model.Trip{
+			Date:        fmt.Sprintf("2024-03-%02d", i+23),
+			Origin:      "Work",
+			Destination: "Home",
+			Miles:       5.0,
+			Type:        "single",
+		}
+		uiModel.AddTrip(trip)
+	}
+
 	// Set active tab to Trips
 	uiModel.ActiveTab = TabTrips
 
@@ -858,7 +860,7 @@ func TestSearchFunctionality(t *testing.T) {
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	uiModel = updatedModel.(*Model)
 
-	// Check if search results are displayed
+	// Check if search results are displayed with pagination
 	view := uiModel.View()
 	expectedResults := []string{
 		"Home → Work",
@@ -870,11 +872,47 @@ func TestSearchFunctionality(t *testing.T) {
 		}
 	}
 
+	// Check if pagination info is displayed
+	if !strings.Contains(view, "Page 1 of") {
+		t.Error("View does not contain pagination information")
+	}
+
+	// Add more trips to test pagination with search results
+	for i := 15; i < 30; i++ {
+		trip := model.Trip{
+			Date:        fmt.Sprintf("2024-04-%02d", i+1),
+			Origin:      "Work",
+			Destination: "Home",
+			Miles:       5.0,
+			Type:        "single",
+		}
+		uiModel.AddTrip(trip)
+	}
+
+	// Search again to get more results
+	uiModel.TextInput.SetValue("Work")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Test page navigation with search results
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyRight})
+	uiModel = updatedModel.(*Model)
+	if uiModel.CurrentPage != 1 {
+		t.Errorf("Expected current page to be 1, got %d", uiModel.CurrentPage)
+	}
+
+	// Test going back to first page
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	uiModel = updatedModel.(*Model)
+	if uiModel.CurrentPage != 0 {
+		t.Errorf("Expected current page to be 0, got %d", uiModel.CurrentPage)
+	}
+
 	// Exit search mode
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
 	uiModel = updatedModel.(*Model)
 
-	// Check if all trips are displayed again
+	// Check if all trips are displayed again with pagination
 	view = uiModel.View()
 	expectedTrips := []string{
 		"Home → Work",
@@ -885,6 +923,11 @@ func TestSearchFunctionality(t *testing.T) {
 		if !strings.Contains(view, trip) {
 			t.Errorf("View does not contain trip: %s", trip)
 		}
+	}
+
+	// Check if pagination info is displayed
+	if !strings.Contains(view, "Page 1 of") {
+		t.Error("View does not contain pagination information")
 	}
 }
 
@@ -1243,5 +1286,85 @@ func TestTabContentDisplay(t *testing.T) {
 	view = uiModel.View()
 	if !strings.Contains(view, "Test expense") {
 		t.Error("Expenses tab should display expenses content")
+	}
+}
+
+func TestTripSelection(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add test trips
+	trip1 := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       5.0,
+		Type:        "single",
+	}
+	trip2 := model.Trip{
+		Date:        "2024-03-21",
+		Origin:      "Work",
+		Destination: "Store",
+		Miles:       3.0,
+		Type:        "single",
+	}
+	uiModel.AddTrip(trip1)
+	uiModel.AddTrip(trip2)
+
+	// Set active tab to Trips
+	uiModel.ActiveTab = TabTrips
+
+	// Test initial selection
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTrip != 0 {
+		t.Errorf("Expected selected trip to be 0, got %d", uiModel.SelectedTrip)
+	}
+
+	// Test moving selection down
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTrip != 1 {
+		t.Errorf("Expected selected trip to be 1, got %d", uiModel.SelectedTrip)
+	}
+
+	// Test moving selection up
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTrip != 0 {
+		t.Errorf("Expected selected trip to be 0, got %d", uiModel.SelectedTrip)
+	}
+
+	// Test page navigation
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyRight})
+	uiModel = updatedModel.(*Model)
+	if uiModel.CurrentPage != 0 {
+		t.Errorf("Expected current page to be 0 (no change), got %d", uiModel.CurrentPage)
+	}
+
+	// Add more trips to test pagination
+	for i := 0; i < 15; i++ {
+		trip := model.Trip{
+			Date:        fmt.Sprintf("2024-03-%02d", i+23),
+			Origin:      "Home",
+			Destination: "Work",
+			Miles:       5.0,
+			Type:        "single",
+		}
+		uiModel.AddTrip(trip)
+	}
+
+	// Test page navigation with multiple pages
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyRight})
+	uiModel = updatedModel.(*Model)
+	if uiModel.CurrentPage != 1 {
+		t.Errorf("Expected current page to be 1, got %d", uiModel.CurrentPage)
+	}
+
+	// Test going back to first page
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	uiModel = updatedModel.(*Model)
+	if uiModel.CurrentPage != 0 {
+		t.Errorf("Expected current page to be 0, got %d", uiModel.CurrentPage)
 	}
 }
