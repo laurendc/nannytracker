@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -668,8 +669,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.SearchMode {
 					displayTrips = m.filterBySearch()
 				}
-				maxPage := (len(displayTrips) - 1) / m.PageSize
-				if m.CurrentPage < maxPage {
+				// Sort trips in descending order (most recent first)
+				sort.Slice(displayTrips, func(i, j int) bool {
+					return displayTrips[i].Date > displayTrips[j].Date
+				})
+				startIdx := m.CurrentPage * m.PageSize
+				endIdx := startIdx + m.PageSize
+				if endIdx > len(displayTrips) {
+					endIdx = len(displayTrips)
+				}
+				if m.CurrentPage < (len(displayTrips)-1)/m.PageSize {
 					m.CurrentPage++
 					// Adjust selected trip to stay within the current page
 					if m.SelectedTrip >= 0 {
@@ -869,7 +878,10 @@ func (m *Model) View() string {
 		if len(displayTrips) > 0 {
 			s.WriteString(headerStyle.Render("Regular Trips:") + "\n")
 
-			// Calculate pagination
+			// Sort trips in descending order (most recent first)
+			sort.Slice(displayTrips, func(i, j int) bool {
+				return displayTrips[i].Date > displayTrips[j].Date
+			})
 			startIdx := m.CurrentPage * m.PageSize
 			endIdx := startIdx + m.PageSize
 			if endIdx > len(displayTrips) {
@@ -883,7 +895,8 @@ func (m *Model) View() string {
 				if trip.Type == "round" {
 					displayMiles *= 2
 				}
-				tripLine := fmt.Sprintf("%s → %s (%.2f miles) [%s]", trip.Origin, trip.Destination, displayMiles, trip.Type)
+				tripLine := fmt.Sprintf("%s: %s → %s (%.2f miles) [%s]",
+					trip.Date, trip.Origin, trip.Destination, displayMiles, trip.Type)
 
 				if m.EditIndex == i {
 					tripLine = editingStyle.Render("> " + tripLine)
