@@ -252,14 +252,10 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 
 	// Check if weekly summaries are displayed with totals
 	expectedSummaries := []string{
-		"Week of 2024-03-17 to 2024-03-23:",
+		"Week of 2024-03-17 to 2024-03-23 (Week 1 of 2):",
 		"    Total Miles:          40.00",  // 10 + (15 * 2)
 		"    Total Mileage Amount: $26.20", // 40 * 0.655
 		"    Total Expenses:       $41.25", // 25.50 + 15.75
-		"Week of 2024-03-24 to 2024-03-30:",
-		"    Total Miles:          70.00",  // 20 + (25 * 2)
-		"    Total Mileage Amount: $45.85", // 70 * 0.655
-		"    Total Expenses:       $30.00", // 30.00
 	}
 
 	for _, expected := range expectedSummaries {
@@ -272,8 +268,6 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 	expectedTrips := []string{
 		"2024-03-17: Home → Work (10.00 miles) [single]",
 		"2024-03-18: Work → Home (30.00 miles) [round]",
-		"2024-03-24: Home → Work (20.00 miles) [single]",
-		"2024-03-25: Work → Home (50.00 miles) [round]",
 	}
 
 	for _, expected := range expectedTrips {
@@ -286,7 +280,6 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 	expectedExpenses := []string{
 		"2024-03-17: $25.50 - Lunch",
 		"2024-03-18: $15.75 - Snacks",
-		"2024-03-24: $30.00 - Activities",
 	}
 
 	for _, expected := range expectedExpenses {
