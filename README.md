@@ -1,6 +1,6 @@
 # Nanny Tracker
 
-A terminal-based application for tracking mileage, expenses, and calculating reimbursements for nannies.
+A terminal-based application for tracking mileage, expenses, and calculating reimbursements. While this was originally built to provide my nanny with weekly reumbusements, it can also be used for tracking expenses and mileage for anyone.
 
 ## Features
 
@@ -9,12 +9,33 @@ A terminal-based application for tracking mileage, expenses, and calculating rei
 - Support for single and round trips
 - Support for recurring trips with weekly scheduling
 - Automatic mileage calculation using Google Maps API
-- **Weekly summaries** of mileage, expenses, and reimbursement amounts with improved formatting and alignment
-- **Search trips** by origin, destination, date, or type (Ctrl+F)
+- Search trips by origin, destination, date, or type
 - Edit and delete trips with confirmation
 - Persistent storage of trip and expense data
-- **Beautiful terminal UI** with color highlighting for navigation and clear alignment
-- **Ctrl+R**: Toggle recurring trip mode or convert selected trip to recurring
+- Data validation for all entries
+- Automatic trip generation from recurring trips
+- Support for custom mileage reimbursement rates
+- Configurable data storage location
+- Terminal-based UI with keyboard navigation
+- Real-time search filtering
+- Weekly summaries with itemized trips and expenses
+
+## Data Structures
+
+The application uses the following core data structures:
+
+- **Trip**: Represents a single trip with origin, destination, mileage, date, and type (single/round)
+- **RecurringTrip**: Represents a weekly recurring trip with start/end dates and weekday
+- **Expense**: Represents a reimbursable expense with date, amount, and description
+- **WeeklySummary**: Contains aggregated data for a week including total miles, reimbursement amount, and expenses
+
+## Technical Details
+
+- Built in Go using the Bubble Tea TUI framework
+- Uses Google Maps API for accurate mileage calculations
+- JSON-based persistent storage
+- Environment-based configuration
+- Comprehensive test coverage
 
 ## Installation
 
@@ -158,14 +179,23 @@ go test ./...
 
 ### Project Structure
 
-- `cmd/`: Main application entry point
-- `internal/`: Core application code
-  - `maps/`: Google Maps API integration
-  - `model/`: Data models and business logic
-  - `storage/`: Data persistence
-  - `ui/`: Terminal user interface
-- `pkg/`: Shared utilities
-  - `config/`: Configuration management
+```
+.
+├── internal/
+│   ├── model/      # Core data structures and business logic
+│   ├── ui/         # Terminal UI components
+│   ├── storage/    # Data persistence
+│   └── maps/       # Google Maps integration
+├── pkg/            # Public packages
+├── main.go         # Application entry point
+└── main_test.go    # Integration tests
+```
+
+### Dependencies
+
+- github.com/charmbracelet/bubbletea - Terminal UI framework
+- github.com/joho/godotenv - Environment configuration
+- Google Maps API - Mileage calculations
 
 ## Future Enhancements
 
