@@ -222,10 +222,10 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 
 	// Add trips for different weeks
 	trips := []model.Trip{
-		{Date: "2024-03-17", Origin: "Home", Destination: "Work", Miles: 10.0}, // Week 1
-		{Date: "2024-03-18", Origin: "Work", Destination: "Home", Miles: 15.0}, // Week 1
-		{Date: "2024-03-24", Origin: "Home", Destination: "Work", Miles: 20.0}, // Week 2
-		{Date: "2024-03-25", Origin: "Work", Destination: "Home", Miles: 25.0}, // Week 2
+		{Date: "2024-03-17", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"}, // Week 1
+		{Date: "2024-03-18", Origin: "Work", Destination: "Home", Miles: 15.0, Type: "round"},  // Week 1
+		{Date: "2024-03-24", Origin: "Home", Destination: "Work", Miles: 20.0, Type: "single"}, // Week 2
+		{Date: "2024-03-25", Origin: "Work", Destination: "Home", Miles: 25.0, Type: "round"},  // Week 2
 	}
 
 	// Add expenses for different weeks
@@ -250,21 +250,48 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 	// Get the view
 	view := uiModel.View()
 
-	// Check if weekly summaries are displayed with expenses (new format)
+	// Check if weekly summaries are displayed with totals
 	expectedSummaries := []string{
 		"Week of 2024-03-17 to 2024-03-23:",
-		"    Total Miles:          25.00",
-		"    Total Mileage Amount: $16.38",
-		"    Total Expenses:       $41.25",
+		"    Total Miles:          40.00",  // 10 + (15 * 2)
+		"    Total Mileage Amount: $26.20", // 40 * 0.655
+		"    Total Expenses:       $41.25", // 25.50 + 15.75
 		"Week of 2024-03-24 to 2024-03-30:",
-		"    Total Miles:          45.00",
-		"    Total Mileage Amount: $29.48",
-		"    Total Expenses:       $30.00",
+		"    Total Miles:          70.00",  // 20 + (25 * 2)
+		"    Total Mileage Amount: $45.85", // 70 * 0.655
+		"    Total Expenses:       $30.00", // 30.00
 	}
 
 	for _, expected := range expectedSummaries {
 		if !strings.Contains(view, expected) {
 			t.Errorf("View does not contain expected weekly summary: %s", expected)
+		}
+	}
+
+	// Check if itemized trips are displayed
+	expectedTrips := []string{
+		"2024-03-17: Home → Work (10.00 miles) [single]",
+		"2024-03-18: Work → Home (30.00 miles) [round]",
+		"2024-03-24: Home → Work (20.00 miles) [single]",
+		"2024-03-25: Work → Home (50.00 miles) [round]",
+	}
+
+	for _, expected := range expectedTrips {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected trip: %s", expected)
+		}
+	}
+
+	// Check if itemized expenses are displayed
+	expectedExpenses := []string{
+		"2024-03-17: $25.50 - Lunch",
+		"2024-03-18: $15.75 - Snacks",
+		"2024-03-24: $30.00 - Activities",
+	}
+
+	for _, expected := range expectedExpenses {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected expense: %s", expected)
 		}
 	}
 }
