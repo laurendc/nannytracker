@@ -36,6 +36,7 @@ type Model struct {
 	SearchQuery       string // Current search query
 	SearchMode        bool   // Whether we're in search mode
 	ActiveTab         int    // Index of the active tab (0: Weekly Summaries, 1: Trips, 2: Expenses)
+	SelectedWeek      int    // Index of the currently selected week in WeeklySummaries
 }
 
 const (
@@ -635,6 +636,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, cmd
+		case tea.KeyLeft:
+			if m.ActiveTab == TabWeeklySummaries && len(m.Data.WeeklySummaries) > 0 {
+				if m.SelectedWeek > 0 {
+					m.SelectedWeek--
+				}
+			}
+		case tea.KeyRight:
+			if m.ActiveTab == TabWeeklySummaries && len(m.Data.WeeklySummaries) > 0 {
+				if m.SelectedWeek < len(m.Data.WeeklySummaries)-1 {
+					m.SelectedWeek++
+				}
+			}
 		}
 
 		// Handle search input
@@ -741,16 +754,43 @@ func (m *Model) View() string {
 	switch m.ActiveTab {
 	case TabWeeklySummaries:
 		if len(m.Data.WeeklySummaries) > 0 {
-			for _, summary := range m.Data.WeeklySummaries {
-				s.WriteString(fmt.Sprintf("Week of %s to %s:\n", summary.WeekStart, summary.WeekEnd))
-				s.WriteString(normalStyle.SetString(fmt.Sprintf("    Total Miles:          %.2f\n"+
-					"    Total Mileage Amount: $%.2f\n"+
-					"    Total Expenses:       $%.2f\n",
-					summary.TotalMiles,
-					summary.TotalAmount,
-					summary.TotalExpenses)).String())
-				s.WriteString("\n")
+			// Show only the selected week
+			if m.SelectedWeek < 0 || m.SelectedWeek >= len(m.Data.WeeklySummaries) {
+				m.SelectedWeek = 0
 			}
+			summary := m.Data.WeeklySummaries[m.SelectedWeek]
+			s.WriteString(fmt.Sprintf("Week of %s to %s (Week %d of %d):\n", summary.WeekStart, summary.WeekEnd, m.SelectedWeek+1, len(m.Data.WeeklySummaries)))
+			s.WriteString(normalStyle.SetString(fmt.Sprintf("    Total Miles:          %.2f\n"+
+				"    Total Mileage Amount: $%.2f\n"+
+				"    Total Expenses:       $%.2f\n",
+				summary.TotalMiles,
+				summary.TotalAmount,
+				summary.TotalExpenses)).String())
+
+			// Display itemized trips
+			if len(summary.Trips) > 0 {
+				s.WriteString("\n    Trips:\n")
+				for _, trip := range summary.Trips {
+					displayMiles := trip.Miles
+					if trip.Type == "round" {
+						displayMiles *= 2
+					}
+					tripLine := fmt.Sprintf("      %s: %s → %s (%.2f miles) [%s]",
+						trip.Date, trip.Origin, trip.Destination, displayMiles, trip.Type)
+					s.WriteString(normalStyle.Render(tripLine) + "\n")
+				}
+			}
+
+			// Display itemized expenses
+			if len(summary.Expenses) > 0 {
+				s.WriteString("\n    Expenses:\n")
+				for _, expense := range summary.Expenses {
+					expenseLine := fmt.Sprintf("      %s: $%.2f - %s",
+						expense.Date, expense.Amount, expense.Description)
+					s.WriteString(normalStyle.Render(expenseLine) + "\n")
+				}
+			}
+			s.WriteString("\n")
 		} else {
 			s.WriteString(normalStyle.Render("No weekly summaries available.\n\n"))
 		}
@@ -833,6 +873,7 @@ func (m *Model) View() string {
 		Foreground(lipgloss.Color("#888888")).
 		SetString("↑/↓: Navigate items\n" +
 			"Tab/Shift+Tab: Switch tabs\n" +
+			"←/→: Switch weeks in summary\n" +
 			"Ctrl+E: Edit selected item\n" +
 			"Ctrl+D: Delete selected item\n" +
 			"Ctrl+F: Toggle search mode\n" +
