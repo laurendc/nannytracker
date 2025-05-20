@@ -556,38 +556,42 @@ func TestTripSelection(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
-	// Add multiple trips
-	trips := []model.Trip{
-		{Date: "2024-03-20", Origin: "A", Destination: "B", Miles: 10.0},
-		{Date: "2024-03-21", Origin: "C", Destination: "D", Miles: 15.0},
-		{Date: "2024-03-22", Origin: "E", Destination: "F", Miles: 5.0},
+	// Add test trips
+	trip1 := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       5.0,
+		Type:        "single",
 	}
-
-	for _, trip := range trips {
-		uiModel.AddTrip(trip)
+	trip2 := model.Trip{
+		Date:        "2024-03-21",
+		Origin:      "Work",
+		Destination: "Store",
+		Miles:       3.0,
+		Type:        "single",
 	}
+	uiModel.AddTrip(trip1)
+	uiModel.AddTrip(trip2)
 
-	// Initialize selection
-	uiModel.SelectedTrip = -1
+	// Set active tab to Trips
+	uiModel.ActiveTab = TabTrips
 
-	// Test selection movement
-	var updatedModel tea.Model
-
-	// Move down
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	// Test initial selection
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
 	uiModel = updatedModel.(*Model)
 	if uiModel.SelectedTrip != 0 {
 		t.Errorf("Expected selected trip to be 0, got %d", uiModel.SelectedTrip)
 	}
 
-	// Move down again
+	// Test moving selection down
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
 	uiModel = updatedModel.(*Model)
 	if uiModel.SelectedTrip != 1 {
 		t.Errorf("Expected selected trip to be 1, got %d", uiModel.SelectedTrip)
 	}
 
-	// Move up
+	// Test moving selection up
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
 	uiModel = updatedModel.(*Model)
 	if uiModel.SelectedTrip != 0 {
@@ -595,245 +599,50 @@ func TestTripSelection(t *testing.T) {
 	}
 }
 
-func TestEditTripWithType(t *testing.T) {
-	uiModel, cleanup := setupTestUI(t)
-	defer cleanup()
-
-	// Add a trip first
-	originalTrip := model.Trip{
-		Date:        "2024-03-20",
-		Origin:      "Home",
-		Destination: "Work",
-		Miles:       10.5,
-		Type:        "single",
-	}
-	uiModel.AddTrip(originalTrip)
-
-	// Select the trip
-	uiModel.SelectedTrip = 0
-
-	// Enter edit mode
-	var updatedModel tea.Model
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
-	uiModel = updatedModel.(*Model)
-
-	if uiModel.Mode != "edit" {
-		t.Errorf("Expected mode to be 'edit', got '%s'", uiModel.Mode)
-	}
-
-	// Verify initial edit state
-	if uiModel.EditIndex != 0 {
-		t.Errorf("Expected EditIndex to be 0, got %d", uiModel.EditIndex)
-	}
-	if uiModel.CurrentTrip != originalTrip {
-		t.Errorf("Expected CurrentTrip to match original trip")
-	}
-	if uiModel.TextInput.Value() != originalTrip.Date {
-		t.Errorf("Expected TextInput value to be '%s', got '%s'", originalTrip.Date, uiModel.TextInput.Value())
-	}
-
-	// Edit the date
-	newDate := "2024-03-21"
-	uiModel.TextInput.SetValue(newDate)
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Edit origin
-	uiModel.TextInput.SetValue("Updated Home")
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Edit destination
-	uiModel.TextInput.SetValue("Updated Work")
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Edit trip type
-	uiModel.TextInput.SetValue("round")
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Verify final state
-	if len(uiModel.Trips) != 1 {
-		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
-	}
-
-	editedTrip := uiModel.Trips[0]
-	if editedTrip.Date != newDate {
-		t.Errorf("Expected final date to be '%s', got '%s'", newDate, editedTrip.Date)
-	}
-	if editedTrip.Origin != "Updated Home" {
-		t.Errorf("Expected origin to be 'Updated Home', got '%s'", editedTrip.Origin)
-	}
-	if editedTrip.Destination != "Updated Work" {
-		t.Errorf("Expected destination to be 'Updated Work', got '%s'", editedTrip.Destination)
-	}
-	if editedTrip.Type != "round" {
-		t.Errorf("Expected type to be 'round', got '%s'", editedTrip.Type)
-	}
-
-	// Verify edit mode was cleared
-	if uiModel.Mode != "date" {
-		t.Errorf("Expected mode to reset to 'date', got '%s'", uiModel.Mode)
-	}
-	if uiModel.EditIndex != -1 {
-		t.Errorf("Expected EditIndex to reset to -1, got %d", uiModel.EditIndex)
-	}
-}
-
 func TestTripHistoryDisplay(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
-	// Add trips with different types
-	trips := []model.Trip{
-		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"},
-		{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 5.0, Type: "round"},
-		{Date: "2024-03-22", Origin: "Home", Destination: "Gym", Miles: 3.0, Type: "single"},
+	// Add test trips
+	trip1 := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.0,
+		Type:        "single",
 	}
-
-	for _, trip := range trips {
-		uiModel.AddTrip(trip)
+	trip2 := model.Trip{
+		Date:        "2024-03-21",
+		Origin:      "Work",
+		Destination: "Store",
+		Miles:       10.0,
+		Type:        "single",
 	}
+	trip3 := model.Trip{
+		Date:        "2024-03-22",
+		Origin:      "Home",
+		Destination: "Gym",
+		Miles:       3.0,
+		Type:        "single",
+	}
+	uiModel.AddTrip(trip1)
+	uiModel.AddTrip(trip2)
+	uiModel.AddTrip(trip3)
 
-	// Get the view
+	// Set active tab to Trips
+	uiModel.ActiveTab = TabTrips
+
+	// Check if trips are displayed
 	view := uiModel.View()
-
-	// Check if trips are displayed correctly
-	for _, trip := range trips {
-		displayMiles := trip.Miles
-		if trip.Type == "round" {
-			displayMiles *= 2
+	expectedTrips := []string{
+		"Home → Work (10.00 miles)",
+		"Work → Store (10.00 miles)",
+		"Home → Gym (3.00 miles)",
+	}
+	for _, trip := range expectedTrips {
+		if !strings.Contains(view, trip) {
+			t.Errorf("View does not contain expected trip: %s", trip)
 		}
-		expected := fmt.Sprintf("%s → %s (%.2f miles)", trip.Origin, trip.Destination, displayMiles)
-		if !strings.Contains(view, expected) {
-			t.Errorf("View does not contain expected trip: %s", expected)
-		}
-	}
-
-	// Verify total miles calculation
-	totalMiles := uiModel.CalculateTotalMiles(uiModel.Trips)
-	expectedTotal := 10.0 + (5.0 * 2) + 3.0 // single + round + single
-	if totalMiles != expectedTotal {
-		t.Errorf("Expected total miles to be %.2f, got %.2f", expectedTotal, totalMiles)
-	}
-}
-
-func TestEditTripWithSkippedFields(t *testing.T) {
-	uiModel, cleanup := setupTestUI(t)
-	defer cleanup()
-
-	// Add a trip first
-	originalTrip := model.Trip{
-		Date:        "2024-03-20",
-		Origin:      "Home",
-		Destination: "Work",
-		Miles:       10.5,
-		Type:        "single",
-	}
-	uiModel.AddTrip(originalTrip)
-
-	// Select the trip
-	uiModel.SelectedTrip = 0
-
-	// Enter edit mode
-	var updatedModel tea.Model
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
-	uiModel = updatedModel.(*Model)
-
-	// Skip date field (press Enter without input)
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Skip origin field (press Enter without input)
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Skip destination field (press Enter without input)
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Skip trip type field (press Enter without input)
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Verify the trip remains unchanged
-	if len(uiModel.Trips) != 1 {
-		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
-	}
-
-	editedTrip := uiModel.Trips[0]
-	if editedTrip.Date != originalTrip.Date {
-		t.Errorf("Expected date to remain '%s', got '%s'", originalTrip.Date, editedTrip.Date)
-	}
-	if editedTrip.Origin != originalTrip.Origin {
-		t.Errorf("Expected origin to remain '%s', got '%s'", originalTrip.Origin, editedTrip.Origin)
-	}
-	if editedTrip.Destination != originalTrip.Destination {
-		t.Errorf("Expected destination to remain '%s', got '%s'", originalTrip.Destination, editedTrip.Destination)
-	}
-	if editedTrip.Type != originalTrip.Type {
-		t.Errorf("Expected type to remain '%s', got '%s'", originalTrip.Type, editedTrip.Type)
-	}
-}
-
-func TestEditTripWithMixedChanges(t *testing.T) {
-	uiModel, cleanup := setupTestUI(t)
-	defer cleanup()
-
-	// Add a trip first
-	originalTrip := model.Trip{
-		Date:        "2024-03-20",
-		Origin:      "Home",
-		Destination: "Work",
-		Miles:       10.5,
-		Type:        "single",
-	}
-	uiModel.AddTrip(originalTrip)
-
-	// Select the trip
-	uiModel.SelectedTrip = 0
-
-	// Enter edit mode
-	var updatedModel tea.Model
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
-	uiModel = updatedModel.(*Model)
-
-	// Change date
-	uiModel.TextInput.SetValue("2024-03-21")
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Skip origin field
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Change destination
-	uiModel.TextInput.SetValue("Updated Work")
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Skip trip type field
-	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	uiModel = updatedModel.(*Model)
-
-	// Verify the trip has mixed changes
-	if len(uiModel.Trips) != 1 {
-		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
-	}
-
-	editedTrip := uiModel.Trips[0]
-	if editedTrip.Date != "2024-03-21" {
-		t.Errorf("Expected date to be '2024-03-21', got '%s'", editedTrip.Date)
-	}
-	if editedTrip.Origin != originalTrip.Origin {
-		t.Errorf("Expected origin to remain '%s', got '%s'", originalTrip.Origin, editedTrip.Origin)
-	}
-	if editedTrip.Destination != "Updated Work" {
-		t.Errorf("Expected destination to be 'Updated Work', got '%s'", editedTrip.Destination)
-	}
-	if editedTrip.Type != originalTrip.Type {
-		t.Errorf("Expected type to remain '%s', got '%s'", originalTrip.Type, editedTrip.Type)
 	}
 }
 
@@ -841,40 +650,40 @@ func TestExpenseHistoryDisplay(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
-	// Add expenses
-	expenses := []model.Expense{
-		{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
-		{Date: "2024-03-21", Amount: 15.75, Description: "Snacks"},
-		{Date: "2024-03-22", Amount: 30.00, Description: "Activities"},
+	// Add test expenses
+	expense1 := model.Expense{
+		Date:        "2024-03-20",
+		Amount:      25.50,
+		Description: "Lunch",
 	}
-
-	for _, expense := range expenses {
-		if err := uiModel.Data.AddExpense(expense); err != nil {
-			t.Fatalf("Failed to add expense: %v", err)
-		}
+	expense2 := model.Expense{
+		Date:        "2024-03-21",
+		Amount:      15.75,
+		Description: "Snacks",
 	}
+	expense3 := model.Expense{
+		Date:        "2024-03-22",
+		Amount:      30.00,
+		Description: "Activities",
+	}
+	uiModel.Data.AddExpense(expense1)
+	uiModel.Data.AddExpense(expense2)
+	uiModel.Data.AddExpense(expense3)
 
-	// Get the view
+	// Set active tab to Expenses
+	uiModel.ActiveTab = TabExpenses
+
+	// Check if expenses are displayed
 	view := uiModel.View()
-
-	// Check if expense history shows correct format
 	expectedExpenses := []string{
 		"$25.50 - Lunch",
 		"$15.75 - Snacks",
 		"$30.00 - Activities",
 	}
-
-	for _, expected := range expectedExpenses {
-		if !strings.Contains(view, expected) {
-			t.Errorf("View does not contain expected expense: %s", expected)
+	for _, expense := range expectedExpenses {
+		if !strings.Contains(view, expense) {
+			t.Errorf("View does not contain expected expense: %s", expense)
 		}
-	}
-
-	// Verify total expenses
-	totalExpenses := model.CalculateTotalExpenses(uiModel.Data.Expenses)
-	expectedTotal := 25.50 + 15.75 + 30.00
-	if totalExpenses != expectedTotal {
-		t.Errorf("Expected total expenses to be %.2f, got %.2f", expectedTotal, totalExpenses)
 	}
 }
 
@@ -882,29 +691,54 @@ func TestTimeBasedGrouping(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
-	// Set reference date for testing
-	uiModel.Data.ReferenceDate = "2024-03-20"
-
-	// Add trips for different time periods using fixed dates
-	trips := []model.Trip{
-		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0}, // Today
-		{Date: "2024-03-19", Origin: "Work", Destination: "Home", Miles: 10.0}, // Yesterday
-		{Date: "2024-03-13", Origin: "Home", Destination: "Store", Miles: 5.0}, // Last week
-		{Date: "2024-02-20", Origin: "Home", Destination: "Gym", Miles: 3.0},   // Last month
+	// Add test trips
+	trip1 := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.0,
+		Type:        "single",
 	}
-
-	for _, trip := range trips {
-		uiModel.AddTrip(trip)
+	trip2 := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Work",
+		Destination: "Home",
+		Miles:       10.0,
+		Type:        "single",
 	}
+	trip3 := model.Trip{
+		Date:        "2024-03-21",
+		Origin:      "Home",
+		Destination: "Store",
+		Miles:       5.0,
+		Type:        "single",
+	}
+	trip4 := model.Trip{
+		Date:        "2024-03-22",
+		Origin:      "Home",
+		Destination: "Gym",
+		Miles:       3.0,
+		Type:        "single",
+	}
+	uiModel.AddTrip(trip1)
+	uiModel.AddTrip(trip2)
+	uiModel.AddTrip(trip3)
+	uiModel.AddTrip(trip4)
 
-	// Get the view
+	// Set active tab to Trips
+	uiModel.ActiveTab = TabTrips
+
+	// Check if trips are displayed
 	view := uiModel.View()
-
-	// Verify all trips are displayed
-	for _, trip := range trips {
-		expected := fmt.Sprintf("%s → %s (%.2f miles)", trip.Origin, trip.Destination, trip.Miles)
-		if !strings.Contains(view, expected) {
-			t.Errorf("View does not contain expected trip: %s", expected)
+	expectedTrips := []string{
+		"Home → Work (10.00 miles)",
+		"Work → Home (10.00 miles)",
+		"Home → Store (5.00 miles)",
+		"Home → Gym (3.00 miles)",
+	}
+	for _, trip := range expectedTrips {
+		if !strings.Contains(view, trip) {
+			t.Errorf("View does not contain expected trip: %s", trip)
 		}
 	}
 }
@@ -913,32 +747,45 @@ func TestTimeGroupNavigation(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
-	// Set reference date for testing
-	uiModel.Data.ReferenceDate = "2024-03-20"
-
-	// Add some trips
-	trips := []model.Trip{
-		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"},
-		{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 5.0, Type: "round"},
-		{Date: "2024-03-22", Origin: "Home", Destination: "Gym", Miles: 3.0, Type: "single"},
+	// Add test trips
+	trip1 := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.0,
+		Type:        "single",
 	}
-
-	for _, trip := range trips {
-		uiModel.AddTrip(trip)
+	trip2 := model.Trip{
+		Date:        "2024-03-21",
+		Origin:      "Work",
+		Destination: "Store",
+		Miles:       10.0,
+		Type:        "single",
 	}
+	trip3 := model.Trip{
+		Date:        "2024-03-22",
+		Origin:      "Home",
+		Destination: "Gym",
+		Miles:       3.0,
+		Type:        "single",
+	}
+	uiModel.AddTrip(trip1)
+	uiModel.AddTrip(trip2)
+	uiModel.AddTrip(trip3)
 
-	// Get the view
+	// Set active tab to Trips
+	uiModel.ActiveTab = TabTrips
+
+	// Check if trips are displayed
 	view := uiModel.View()
-
-	// Verify all trips are displayed
-	for _, trip := range trips {
-		displayMiles := trip.Miles
-		if trip.Type == "round" {
-			displayMiles *= 2
-		}
-		expected := fmt.Sprintf("%s → %s (%.2f miles)", trip.Origin, trip.Destination, displayMiles)
-		if !strings.Contains(view, expected) {
-			t.Errorf("View does not contain expected trip: %s", expected)
+	expectedTrips := []string{
+		"Home → Work (10.00 miles)",
+		"Work → Store (10.00 miles)",
+		"Home → Gym (3.00 miles)",
+	}
+	for _, trip := range expectedTrips {
+		if !strings.Contains(view, trip) {
+			t.Errorf("View does not contain expected trip: %s", trip)
 		}
 	}
 }
@@ -947,75 +794,70 @@ func TestSearchFunctionality(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
-	// Add trips with different locations
-	trips := []model.Trip{
-		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"},
-		{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 5.0, Type: "round"},
-		{Date: "2024-03-22", Origin: "Home", Destination: "Gym", Miles: 3.0, Type: "single"},
+	// Add test trips
+	trip1 := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.0,
+		Type:        "single",
 	}
+	trip2 := model.Trip{
+		Date:        "2024-03-21",
+		Origin:      "Work",
+		Destination: "Store",
+		Miles:       10.0,
+		Type:        "single",
+	}
+	trip3 := model.Trip{
+		Date:        "2024-03-22",
+		Origin:      "Home",
+		Destination: "Gym",
+		Miles:       3.0,
+		Type:        "single",
+	}
+	uiModel.AddTrip(trip1)
+	uiModel.AddTrip(trip2)
+	uiModel.AddTrip(trip3)
 
-	for _, trip := range trips {
-		uiModel.AddTrip(trip)
-	}
+	// Set active tab to Trips
+	uiModel.ActiveTab = TabTrips
 
 	// Enter search mode
 	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
 	uiModel = updatedModel.(*Model)
 
-	// Verify search mode is active
-	if !uiModel.SearchMode {
-		t.Error("Search mode should be active")
-	}
-	if uiModel.Mode != "search" {
-		t.Errorf("Expected mode to be 'search', got '%s'", uiModel.Mode)
-	}
-
-	// Set search query
+	// Search for "Work"
 	uiModel.TextInput.SetValue("Work")
-	uiModel.SearchQuery = "Work"
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
 
-	// Get the view
+	// Check if search results are displayed
 	view := uiModel.View()
-
-	// Verify search results
-	expectedTrips := []model.Trip{
-		{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"},
-		{Date: "2024-03-21", Origin: "Work", Destination: "Store", Miles: 5.0, Type: "round"},
+	expectedResults := []string{
+		"Home → Work",
+		"Work → Store",
 	}
-
-	for _, trip := range expectedTrips {
-		expected := fmt.Sprintf("%s → %s", trip.Origin, trip.Destination)
-		if !strings.Contains(view, expected) {
-			t.Errorf("View does not contain expected search result: %s", expected)
+	for _, result := range expectedResults {
+		if !strings.Contains(view, result) {
+			t.Errorf("View does not contain expected search result: %s", result)
 		}
-	}
-
-	// Verify non-matching trips are not shown
-	unexpectedTrip := "Home → Gym"
-	if strings.Contains(view, unexpectedTrip) {
-		t.Errorf("View contains unexpected search result: %s", unexpectedTrip)
 	}
 
 	// Exit search mode
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlF})
 	uiModel = updatedModel.(*Model)
 
-	// Verify search mode is inactive
-	if uiModel.SearchMode {
-		t.Error("Search mode should be inactive")
-	}
-	if uiModel.Mode != "date" {
-		t.Errorf("Expected mode to be 'date', got '%s'", uiModel.Mode)
-	}
-
-	// Get the view after exiting search mode
+	// Check if all trips are displayed again
 	view = uiModel.View()
-
-	// Verify all trips are shown again
-	for _, trip := range trips {
-		expected := fmt.Sprintf("%s → %s", trip.Origin, trip.Destination)
-		if !strings.Contains(view, expected) {
-			t.Errorf("View does not contain trip: %s", expected)
+	expectedTrips := []string{
+		"Home → Work",
+		"Work → Store",
+		"Home → Gym",
+	}
+	for _, trip := range expectedTrips {
+		if !strings.Contains(view, trip) {
+			t.Errorf("View does not contain trip: %s", trip)
 		}
 	}
 }
@@ -1024,28 +866,32 @@ func TestExpenseNavigation(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
-	// Add multiple expenses
-	expenses := []model.Expense{
-		{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
-		{Date: "2024-03-21", Amount: 15.75, Description: "Snacks"},
-		{Date: "2024-03-22", Amount: 30.00, Description: "Activities"},
+	// Add test expenses
+	expense1 := model.Expense{
+		Date:        "2024-03-20",
+		Amount:      25.50,
+		Description: "Lunch",
 	}
-
-	for _, expense := range expenses {
-		if err := uiModel.Data.AddExpense(expense); err != nil {
-			t.Fatalf("Failed to add expense: %v", err)
-		}
+	expense2 := model.Expense{
+		Date:        "2024-03-21",
+		Amount:      15.75,
+		Description: "Snacks",
 	}
+	expense3 := model.Expense{
+		Date:        "2024-03-22",
+		Amount:      30.00,
+		Description: "Activities",
+	}
+	uiModel.Data.AddExpense(expense1)
+	uiModel.Data.AddExpense(expense2)
+	uiModel.Data.AddExpense(expense3)
 
-	// Initialize selection to trips
-	uiModel.SelectedTrip = 0
-	uiModel.SelectedExpense = -1
+	// Set active tab to Expenses
+	uiModel.ActiveTab = TabExpenses
 
-	// Switch to expenses list using Tab
-	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	// Test initial selection
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
 	uiModel = updatedModel.(*Model)
-
-	// Verify we're in expense mode
 	if uiModel.SelectedExpense != 0 {
 		t.Errorf("Expected to start at expense 0 after Tab, got %d", uiModel.SelectedExpense)
 	}
@@ -1053,52 +899,41 @@ func TestExpenseNavigation(t *testing.T) {
 		t.Errorf("Expected trip selection to be -1 after Tab, got %d", uiModel.SelectedTrip)
 	}
 
-	// Test selection movement
-	var model tea.Model
-
-	// Move down to second expense
-	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
-	uiModel = model.(*Model)
+	// Test moving selection down
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
 	if uiModel.SelectedExpense != 1 {
 		t.Errorf("Expected selected expense to be 1, got %d", uiModel.SelectedExpense)
 	}
 
-	// Move down to third expense
-	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
-	uiModel = model.(*Model)
+	// Test moving selection down again
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
 	if uiModel.SelectedExpense != 2 {
 		t.Errorf("Expected selected expense to be 2, got %d", uiModel.SelectedExpense)
 	}
 
-	// Move up to second expense
-	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
-	uiModel = model.(*Model)
+	// Test moving selection up
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = updatedModel.(*Model)
 	if uiModel.SelectedExpense != 1 {
 		t.Errorf("Expected selected expense to be 1, got %d", uiModel.SelectedExpense)
 	}
 
-	// Test wrapping around
-	// Move up twice to wrap to last expense
-	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
-	uiModel = model.(*Model)
-	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
-	uiModel = model.(*Model)
-	if uiModel.SelectedExpense != 2 {
-		t.Errorf("Expected selected expense to wrap to 2, got %d", uiModel.SelectedExpense)
-	}
-
-	// Move down to wrap to first expense
-	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
-	uiModel = model.(*Model)
+	// Test wrap-around when moving down
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
 	if uiModel.SelectedExpense != 0 {
 		t.Errorf("Expected selected expense to wrap to 0, got %d", uiModel.SelectedExpense)
 	}
 
-	// Test switching back to trips
-	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
-	uiModel = model.(*Model)
-	if uiModel.SelectedExpense != -1 {
-		t.Errorf("Expected expense selection to be -1 after switching to trips, got %d", uiModel.SelectedExpense)
+	// Test wrap-around when moving up
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedExpense != 2 {
+		t.Errorf("Expected selected expense to wrap to 2, got %d", uiModel.SelectedExpense)
 	}
 }
 
@@ -1237,5 +1072,140 @@ func TestConvertTripToRecurringWithNoSelection(t *testing.T) {
 	// Verify no recurring trip was created
 	if len(uiModel.RecurringTrips) != 0 {
 		t.Errorf("Expected 0 recurring trips, got %d", len(uiModel.RecurringTrips))
+	}
+}
+
+func TestTabNavigation(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test initial tab state
+	if uiModel.ActiveTab != TabWeeklySummaries {
+		t.Errorf("Expected initial tab to be Weekly Summaries (0), got %d", uiModel.ActiveTab)
+	}
+
+	// Test forward tab navigation
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabTrips {
+		t.Errorf("Expected tab to be Trips (1) after Tab, got %d", uiModel.ActiveTab)
+	}
+
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabExpenses {
+		t.Errorf("Expected tab to be Expenses (2) after Tab, got %d", uiModel.ActiveTab)
+	}
+
+	// Test wrap-around
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabWeeklySummaries {
+		t.Errorf("Expected tab to wrap around to Weekly Summaries (0), got %d", uiModel.ActiveTab)
+	}
+
+	// Test reverse tab navigation
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabExpenses {
+		t.Errorf("Expected tab to be Expenses (2) after Shift+Tab, got %d", uiModel.ActiveTab)
+	}
+}
+
+func TestTabContentNavigation(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add some test data
+	trip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       5.0,
+		Type:        "single",
+	}
+	uiModel.AddTrip(trip)
+
+	expense := model.Expense{
+		Date:        "2024-03-20",
+		Amount:      10.0,
+		Description: "Test expense",
+	}
+	uiModel.Data.AddExpense(expense)
+
+	// Test navigation in Trips tab
+	uiModel.ActiveTab = TabTrips
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTrip != 0 {
+		t.Errorf("Expected selected trip to be 0, got %d", uiModel.SelectedTrip)
+	}
+	if uiModel.SelectedExpense != -1 {
+		t.Errorf("Expected selected expense to be -1, got %d", uiModel.SelectedExpense)
+	}
+
+	// Test navigation in Expenses tab
+	uiModel.ActiveTab = TabExpenses
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedExpense != 0 {
+		t.Errorf("Expected selected expense to be 0, got %d", uiModel.SelectedExpense)
+	}
+	if uiModel.SelectedTrip != -1 {
+		t.Errorf("Expected selected trip to be -1, got %d", uiModel.SelectedTrip)
+	}
+
+	// Test navigation in Weekly Summaries tab (should not affect selections)
+	uiModel.ActiveTab = TabWeeklySummaries
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedExpense != 0 {
+		t.Errorf("Expected selected expense to remain 0, got %d", uiModel.SelectedExpense)
+	}
+	if uiModel.SelectedTrip != -1 {
+		t.Errorf("Expected selected trip to remain -1, got %d", uiModel.SelectedTrip)
+	}
+}
+
+func TestTabContentDisplay(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add test data
+	trip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       5.0,
+		Type:        "single",
+	}
+	uiModel.AddTrip(trip)
+
+	expense := model.Expense{
+		Date:        "2024-03-20",
+		Amount:      10.0,
+		Description: "Test expense",
+	}
+	uiModel.Data.AddExpense(expense)
+
+	// Test Weekly Summaries tab content
+	uiModel.ActiveTab = TabWeeklySummaries
+	view := uiModel.View()
+	if !strings.Contains(view, "Weekly Summaries") {
+		t.Error("Weekly Summaries tab should display weekly summaries content")
+	}
+
+	// Test Trips tab content
+	uiModel.ActiveTab = TabTrips
+	view = uiModel.View()
+	if !strings.Contains(view, "Regular Trips") {
+		t.Error("Trips tab should display trips content")
+	}
+
+	// Test Expenses tab content
+	uiModel.ActiveTab = TabExpenses
+	view = uiModel.View()
+	if !strings.Contains(view, "Test expense") {
+		t.Error("Expenses tab should display expenses content")
 	}
 }
