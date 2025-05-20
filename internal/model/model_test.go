@@ -260,7 +260,7 @@ func TestCalculateWeeklySummaries(t *testing.T) {
 			name: "single week with trips and expenses",
 			trips: []Trip{
 				{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10, Type: "single"},
-				{Date: "2024-03-21", Origin: "Work", Destination: "Home", Miles: 10, Type: "single"},
+				{Date: "2024-03-21", Origin: "Work", Destination: "Home", Miles: 10, Type: "round"},
 			},
 			expenses: []Expense{
 				{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
@@ -271,9 +271,17 @@ func TestCalculateWeeklySummaries(t *testing.T) {
 				{
 					WeekStart:     "2024-03-17", // Sunday of the week
 					WeekEnd:       "2024-03-23", // Saturday of the week
-					TotalMiles:    20.0,
-					TotalAmount:   14.0,  // 20 miles * 0.70
-					TotalExpenses: 41.25, // 25.50 + 15.75
+					TotalMiles:    30.0,         // 10 + (10 * 2)
+					TotalAmount:   21.0,         // 30 miles * 0.70
+					TotalExpenses: 41.25,        // 25.50 + 15.75
+					Trips: []Trip{
+						{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10, Type: "single"},
+						{Date: "2024-03-21", Origin: "Work", Destination: "Home", Miles: 10, Type: "round"},
+					},
+					Expenses: []Expense{
+						{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
+						{Date: "2024-03-21", Amount: 15.75, Description: "Snacks"},
+					},
 				},
 			},
 		},
@@ -281,7 +289,7 @@ func TestCalculateWeeklySummaries(t *testing.T) {
 			name: "multiple weeks",
 			trips: []Trip{
 				{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10, Type: "single"},
-				{Date: "2024-03-27", Origin: "Work", Destination: "Home", Miles: 10, Type: "single"},
+				{Date: "2024-03-27", Origin: "Work", Destination: "Home", Miles: 10, Type: "round"},
 			},
 			expenses: []Expense{
 				{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
@@ -295,13 +303,25 @@ func TestCalculateWeeklySummaries(t *testing.T) {
 					TotalMiles:    10.0,
 					TotalAmount:   7.0,   // 10 miles * 0.70
 					TotalExpenses: 25.50, // First week expense
+					Trips: []Trip{
+						{Date: "2024-03-20", Origin: "Home", Destination: "Work", Miles: 10, Type: "single"},
+					},
+					Expenses: []Expense{
+						{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
+					},
 				},
 				{
 					WeekStart:     "2024-03-24", // Second week
 					WeekEnd:       "2024-03-30",
-					TotalMiles:    10.0,
-					TotalAmount:   7.0,   // 10 miles * 0.70
+					TotalMiles:    20.0,  // 10 * 2 for round trip
+					TotalAmount:   14.0,  // 20 miles * 0.70
 					TotalExpenses: 15.75, // Second week expense
+					Trips: []Trip{
+						{Date: "2024-03-27", Origin: "Work", Destination: "Home", Miles: 10, Type: "round"},
+					},
+					Expenses: []Expense{
+						{Date: "2024-03-27", Amount: 15.75, Description: "Snacks"},
+					},
 				},
 			},
 		},
@@ -330,6 +350,46 @@ func TestCalculateWeeklySummaries(t *testing.T) {
 				}
 				if got[i].TotalExpenses != tt.want[i].TotalExpenses {
 					t.Errorf("Week %d: TotalExpenses got %v, want %v", i, got[i].TotalExpenses, tt.want[i].TotalExpenses)
+				}
+
+				// Verify trips
+				if len(got[i].Trips) != len(tt.want[i].Trips) {
+					t.Errorf("Week %d: got %d trips, want %d", i, len(got[i].Trips), len(tt.want[i].Trips))
+					continue
+				}
+				for j := range got[i].Trips {
+					if got[i].Trips[j].Date != tt.want[i].Trips[j].Date {
+						t.Errorf("Week %d, Trip %d: Date got %v, want %v", i, j, got[i].Trips[j].Date, tt.want[i].Trips[j].Date)
+					}
+					if got[i].Trips[j].Origin != tt.want[i].Trips[j].Origin {
+						t.Errorf("Week %d, Trip %d: Origin got %v, want %v", i, j, got[i].Trips[j].Origin, tt.want[i].Trips[j].Origin)
+					}
+					if got[i].Trips[j].Destination != tt.want[i].Trips[j].Destination {
+						t.Errorf("Week %d, Trip %d: Destination got %v, want %v", i, j, got[i].Trips[j].Destination, tt.want[i].Trips[j].Destination)
+					}
+					if got[i].Trips[j].Miles != tt.want[i].Trips[j].Miles {
+						t.Errorf("Week %d, Trip %d: Miles got %v, want %v", i, j, got[i].Trips[j].Miles, tt.want[i].Trips[j].Miles)
+					}
+					if got[i].Trips[j].Type != tt.want[i].Trips[j].Type {
+						t.Errorf("Week %d, Trip %d: Type got %v, want %v", i, j, got[i].Trips[j].Type, tt.want[i].Trips[j].Type)
+					}
+				}
+
+				// Verify expenses
+				if len(got[i].Expenses) != len(tt.want[i].Expenses) {
+					t.Errorf("Week %d: got %d expenses, want %d", i, len(got[i].Expenses), len(tt.want[i].Expenses))
+					continue
+				}
+				for j := range got[i].Expenses {
+					if got[i].Expenses[j].Date != tt.want[i].Expenses[j].Date {
+						t.Errorf("Week %d, Expense %d: Date got %v, want %v", i, j, got[i].Expenses[j].Date, tt.want[i].Expenses[j].Date)
+					}
+					if got[i].Expenses[j].Amount != tt.want[i].Expenses[j].Amount {
+						t.Errorf("Week %d, Expense %d: Amount got %v, want %v", i, j, got[i].Expenses[j].Amount, tt.want[i].Expenses[j].Amount)
+					}
+					if got[i].Expenses[j].Description != tt.want[i].Expenses[j].Description {
+						t.Errorf("Week %d, Expense %d: Description got %v, want %v", i, j, got[i].Expenses[j].Description, tt.want[i].Expenses[j].Description)
+					}
 				}
 			}
 		})
