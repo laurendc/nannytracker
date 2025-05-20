@@ -686,9 +686,15 @@ func TestExpenseHistoryDisplay(t *testing.T) {
 		Amount:      30.00,
 		Description: "Activities",
 	}
-	uiModel.Data.AddExpense(expense1)
-	uiModel.Data.AddExpense(expense2)
-	uiModel.Data.AddExpense(expense3)
+	if err := uiModel.Data.AddExpense(expense1); err != nil {
+		t.Fatalf("Failed to add expense1: %v", err)
+	}
+	if err := uiModel.Data.AddExpense(expense2); err != nil {
+		t.Fatalf("Failed to add expense2: %v", err)
+	}
+	if err := uiModel.Data.AddExpense(expense3); err != nil {
+		t.Fatalf("Failed to add expense3: %v", err)
+	}
 
 	// Set active tab to Expenses
 	uiModel.ActiveTab = TabExpenses
@@ -902,9 +908,15 @@ func TestExpenseNavigation(t *testing.T) {
 		Amount:      30.00,
 		Description: "Activities",
 	}
-	uiModel.Data.AddExpense(expense1)
-	uiModel.Data.AddExpense(expense2)
-	uiModel.Data.AddExpense(expense3)
+	if err := uiModel.Data.AddExpense(expense1); err != nil {
+		t.Fatalf("Failed to add expense1: %v", err)
+	}
+	if err := uiModel.Data.AddExpense(expense2); err != nil {
+		t.Fatalf("Failed to add expense2: %v", err)
+	}
+	if err := uiModel.Data.AddExpense(expense3); err != nil {
+		t.Fatalf("Failed to add expense3: %v", err)
+	}
 
 	// Set active tab to Expenses
 	uiModel.ActiveTab = TabExpenses
@@ -1151,7 +1163,9 @@ func TestTabContentNavigation(t *testing.T) {
 		Amount:      10.0,
 		Description: "Test expense",
 	}
-	uiModel.Data.AddExpense(expense)
+	if err := uiModel.Data.AddExpense(expense); err != nil {
+		t.Fatalf("Failed to add expense: %v", err)
+	}
 
 	// Test navigation in Trips tab
 	uiModel.ActiveTab = TabTrips
@@ -1206,7 +1220,9 @@ func TestTabContentDisplay(t *testing.T) {
 		Amount:      10.0,
 		Description: "Test expense",
 	}
-	uiModel.Data.AddExpense(expense)
+	if err := uiModel.Data.AddExpense(expense); err != nil {
+		t.Fatalf("Failed to add expense: %v", err)
+	}
 
 	// Test Weekly Summaries tab content
 	uiModel.ActiveTab = TabWeeklySummaries
