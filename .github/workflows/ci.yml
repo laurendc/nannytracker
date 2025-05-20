@@ -17,7 +17,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.23'  # or your preferred Go version
+          go-version: '1.22'  # Updated to a valid version
+
+      - name: Cache Go modules
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Install dependencies
         run: go mod download
@@ -27,8 +35,20 @@ jobs:
 
       - name: Run linter
         run: |
-         go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-         golangci-lint run ./...
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run ./...
+
+      - name: Run security checks
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec ./...
+
+      - name: Check formatting
+        run: |
+          if [ -n "$(go fmt ./...)" ]; then
+            echo "Code is not formatted correctly. Please run 'go fmt ./...'"
+            exit 1
+          fi
 
   merge-to-main:
     needs: build-and-test
@@ -53,5 +73,8 @@ jobs:
         run: |
           git checkout main
           git pull origin main
-          git merge --no-ff ${{ github.ref_name }}
+          if ! git merge --no-ff --log ${{ github.ref_name }} -m "Merge feature branch: ${{ github.ref_name }}"; then
+            echo "Merge failed"
+            exit 1
+          fi
           git push origin main
