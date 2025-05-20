@@ -37,6 +37,8 @@ type Model struct {
 	SearchMode        bool   // Whether we're in search mode
 	ActiveTab         int    // Index of the active tab (0: Weekly Summaries, 1: Trips, 2: Expenses)
 	SelectedWeek      int    // Index of the currently selected week in WeeklySummaries
+	PageSize          int    // Number of items to show per page
+	CurrentPage       int    // Current page number (0-based)
 }
 
 const (
@@ -74,6 +76,8 @@ func New(storage storage.Storage, ratePerMile float64) (*Model, error) {
 		SelectedTrip:      -1,
 		SelectedExpense:   -1,
 		SelectedRecurring: -1,
+		PageSize:          10, // Default page size
+		CurrentPage:       0,  // Start at first page
 	}, nil
 }
 
@@ -107,6 +111,8 @@ func NewWithClient(storage storage.Storage, ratePerMile float64, mapsClient maps
 		SelectedTrip:      -1,
 		SelectedExpense:   -1,
 		SelectedRecurring: -1,
+		PageSize:          10, // Default page size
+		CurrentPage:       0,  // Start at first page
 	}, nil
 }
 
@@ -641,13 +647,46 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.SelectedWeek > 0 {
 					m.SelectedWeek--
 				}
+			} else if m.ActiveTab == TabTrips && m.CurrentPage > 0 {
+				m.CurrentPage--
+				// Adjust selected trip to stay within the current page
+				if m.SelectedTrip >= 0 {
+					startIdx := m.CurrentPage * m.PageSize
+					if m.SelectedTrip < startIdx {
+						m.SelectedTrip = startIdx
+					}
+				}
 			}
+			return m, cmd
 		case tea.KeyRight:
 			if m.ActiveTab == TabWeeklySummaries && len(m.Data.WeeklySummaries) > 0 {
 				if m.SelectedWeek < len(m.Data.WeeklySummaries)-1 {
 					m.SelectedWeek++
 				}
+			} else if m.ActiveTab == TabTrips {
+				displayTrips := m.Trips
+				if m.SearchMode {
+					displayTrips = m.filterBySearch()
+				}
+				maxPage := (len(displayTrips) - 1) / m.PageSize
+				if m.CurrentPage < maxPage {
+					m.CurrentPage++
+					// Adjust selected trip to stay within the current page
+					if m.SelectedTrip >= 0 {
+						endIdx := (m.CurrentPage + 1) * m.PageSize
+						if m.SelectedTrip >= endIdx {
+							m.SelectedTrip = endIdx - 1
+						}
+					}
+				}
 			}
+			return m, cmd
+		case tea.KeyPgUp:
+			// Remove Page Up handler since we're using left arrow
+			return m, cmd
+		case tea.KeyPgDown:
+			// Remove Page Down handler since we're using right arrow
+			return m, cmd
 		}
 
 		// Handle search input
@@ -826,10 +865,20 @@ func (m *Model) View() string {
 			s.WriteString("\n")
 		}
 
-		// Show regular trips
+		// Show regular trips with pagination
 		if len(displayTrips) > 0 {
 			s.WriteString(headerStyle.Render("Regular Trips:") + "\n")
-			for i, trip := range displayTrips {
+
+			// Calculate pagination
+			startIdx := m.CurrentPage * m.PageSize
+			endIdx := startIdx + m.PageSize
+			if endIdx > len(displayTrips) {
+				endIdx = len(displayTrips)
+			}
+
+			// Display trips for current page
+			for i := startIdx; i < endIdx; i++ {
+				trip := displayTrips[i]
 				displayMiles := trip.Miles
 				if trip.Type == "round" {
 					displayMiles *= 2
@@ -844,6 +893,14 @@ func (m *Model) View() string {
 					tripLine = normalStyle.Render("  " + tripLine)
 				}
 				s.WriteString(tripLine + "\n")
+			}
+
+			// Show pagination info
+			totalPages := (len(displayTrips) + m.PageSize - 1) / m.PageSize
+			if totalPages > 1 {
+				paginationInfo := fmt.Sprintf("\nPage %d of %d (Showing %d-%d of %d trips)",
+					m.CurrentPage+1, totalPages, startIdx+1, endIdx, len(displayTrips))
+				s.WriteString(normalStyle.Render(paginationInfo) + "\n")
 			}
 		} else {
 			s.WriteString(normalStyle.Render("No trips available.\n"))
@@ -873,7 +930,7 @@ func (m *Model) View() string {
 		Foreground(lipgloss.Color("#888888")).
 		SetString("↑/↓: Navigate items\n" +
 			"Tab/Shift+Tab: Switch tabs\n" +
-			"←/→: Switch weeks in summary\n" +
+			"←/→: Switch weeks/pages\n" +
 			"Ctrl+E: Edit selected item\n" +
 			"Ctrl+D: Delete selected item\n" +
 			"Ctrl+F: Toggle search mode\n" +
