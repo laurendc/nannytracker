@@ -35,7 +35,14 @@ type Model struct {
 	SelectedExpense   int    // Index of selected expense for operations
 	SearchQuery       string // Current search query
 	SearchMode        bool   // Whether we're in search mode
+	ActiveTab         int    // Index of the active tab (0: Weekly Summaries, 1: Trips, 2: Expenses)
 }
+
+const (
+	TabWeeklySummaries = iota
+	TabTrips
+	TabExpenses
+)
 
 // New creates a new UI model with a mock maps client (for backward compatibility)
 func New(storage storage.Storage, ratePerMile float64) (*Model, error) {
@@ -54,14 +61,18 @@ func New(storage storage.Storage, ratePerMile float64) (*Model, error) {
 	ti.Width = 50
 
 	return &Model{
-		TextInput:   ti,
-		Trips:       data.Trips,
-		CurrentTrip: model.Trip{},
-		Mode:        "date",
-		Storage:     storage,
-		RatePerMile: ratePerMile,
-		MapsClient:  maps.NewMockClient(),
-		Data:        data,
+		TextInput:         ti,
+		Trips:             data.Trips,
+		CurrentTrip:       model.Trip{},
+		Mode:              "date",
+		Storage:           storage,
+		RatePerMile:       ratePerMile,
+		MapsClient:        maps.NewMockClient(),
+		Data:              data,
+		EditIndex:         -1,
+		SelectedTrip:      -1,
+		SelectedExpense:   -1,
+		SelectedRecurring: -1,
 	}, nil
 }
 
@@ -83,15 +94,18 @@ func NewWithClient(storage storage.Storage, ratePerMile float64, mapsClient maps
 	ti.Width = 50
 
 	return &Model{
-		TextInput:   ti,
-		Trips:       data.Trips,
-		CurrentTrip: model.Trip{},
-		Mode:        "date",
-		Storage:     storage,
-		RatePerMile: ratePerMile,
-		MapsClient:  mapsClient,
-		Data:        data,
-		EditIndex:   -1,
+		TextInput:         ti,
+		Trips:             data.Trips,
+		CurrentTrip:       model.Trip{},
+		Mode:              "date",
+		Storage:           storage,
+		RatePerMile:       ratePerMile,
+		MapsClient:        mapsClient,
+		Data:              data,
+		EditIndex:         -1,
+		SelectedTrip:      -1,
+		SelectedExpense:   -1,
+		SelectedRecurring: -1,
 	}, nil
 }
 
@@ -133,6 +147,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.TextInput.Reset()
 				m.TextInput.Placeholder = "Enter search term..."
 			}
+			return m, cmd
+		case tea.KeyTab:
+			// Cycle through tabs
+			m.ActiveTab = (m.ActiveTab + 1) % 3
+			return m, cmd
+		case tea.KeyShiftTab:
+			// Cycle through tabs in reverse
+			m.ActiveTab = (m.ActiveTab + 2) % 3
 			return m, cmd
 		case tea.KeyCtrlR:
 			// Toggle recurring trip mode or convert selected trip to recurring
@@ -560,50 +582,56 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, cmd
 		case tea.KeyUp:
-			// Navigate up in the trips or expenses list
+			// Navigate up in the current tab's list
 			if m.Mode == "date" {
-				if m.SelectedExpense >= 0 && len(m.Data.Expenses) > 0 {
-					// Navigate expenses
-					m.SelectedExpense = (m.SelectedExpense - 1 + len(m.Data.Expenses)) % len(m.Data.Expenses)
-					m.SelectedTrip = -1
-				} else if len(m.Trips) > 0 {
-					// Navigate trips
-					m.SelectedTrip = (m.SelectedTrip - 1 + len(m.Trips)) % len(m.Trips)
-					m.SelectedExpense = -1
+				switch m.ActiveTab {
+				case TabTrips:
+					if len(m.Trips) > 0 {
+						if m.SelectedTrip <= 0 {
+							m.SelectedTrip = len(m.Trips) - 1
+						} else {
+							m.SelectedTrip--
+						}
+						m.SelectedExpense = -1
+						m.SelectedRecurring = -1
+					}
+				case TabExpenses:
+					if len(m.Data.Expenses) > 0 {
+						if m.SelectedExpense <= 0 {
+							m.SelectedExpense = len(m.Data.Expenses) - 1
+						} else {
+							m.SelectedExpense--
+						}
+						m.SelectedTrip = -1
+						m.SelectedRecurring = -1
+					}
 				}
 			}
 			return m, cmd
 		case tea.KeyDown:
-			// Navigate down in the trips or expenses list
+			// Navigate down in the current tab's list
 			if m.Mode == "date" {
-				if m.SelectedExpense >= 0 && len(m.Data.Expenses) > 0 {
-					// Navigate expenses
-					m.SelectedExpense = (m.SelectedExpense + 1) % len(m.Data.Expenses)
-					m.SelectedTrip = -1
-				} else if len(m.Trips) > 0 {
-					// Navigate trips
-					m.SelectedTrip = (m.SelectedTrip + 1) % len(m.Trips)
-					m.SelectedExpense = -1
-				}
-			}
-			return m, cmd
-		case tea.KeyTab:
-			// Switch between trips and expenses
-			if m.Mode == "date" {
-				if m.SelectedExpense == -1 && len(m.Data.Expenses) > 0 {
-					m.SelectedExpense = 0
-					m.SelectedTrip = -1
-				} else if m.SelectedTrip == -1 && len(m.Trips) > 0 {
-					m.SelectedTrip = 0
-					m.SelectedExpense = -1
-				} else if m.SelectedExpense >= 0 {
-					// If we're already in expenses, switch to trips
-					m.SelectedTrip = 0
-					m.SelectedExpense = -1
-				} else if m.SelectedTrip >= 0 {
-					// If we're already in trips, switch to expenses
-					m.SelectedExpense = 0
-					m.SelectedTrip = -1
+				switch m.ActiveTab {
+				case TabTrips:
+					if len(m.Trips) > 0 {
+						if m.SelectedTrip < 0 {
+							m.SelectedTrip = 0
+						} else {
+							m.SelectedTrip = (m.SelectedTrip + 1) % len(m.Trips)
+						}
+						m.SelectedExpense = -1
+						m.SelectedRecurring = -1
+					}
+				case TabExpenses:
+					if len(m.Data.Expenses) > 0 {
+						if m.SelectedExpense < 0 {
+							m.SelectedExpense = 0
+						} else {
+							m.SelectedExpense = (m.SelectedExpense + 1) % len(m.Data.Expenses)
+						}
+						m.SelectedTrip = -1
+						m.SelectedRecurring = -1
+					}
 				}
 			}
 			return m, cmd
@@ -674,6 +702,16 @@ func (m *Model) View() string {
 	normalStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#FFFFFF"))
 
+	// Tab styles
+	tabStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#888888")).
+		Padding(0, 1)
+
+	activeTabStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00FF00")).
+		Bold(true).
+		Padding(0, 1)
+
 	// Show error if any
 	if m.Err != nil {
 		s.WriteString(errorStyle.Render(m.Err.Error()) + "\n\n")
@@ -684,98 +722,119 @@ func (m *Model) View() string {
 	s.WriteString(headerStyle.Render(fmt.Sprintf("Mode: %s", m.Mode)) + "\n")
 	s.WriteString(m.TextInput.View() + "\n\n")
 
-	// Show weekly summaries
-	if len(m.Data.WeeklySummaries) > 0 {
-		s.WriteString(headerStyle.Render("Weekly Summaries:") + "\n")
-		for _, summary := range m.Data.WeeklySummaries {
-			s.WriteString(fmt.Sprintf("Week of %s to %s:\n", summary.WeekStart, summary.WeekEnd))
-			s.WriteString(normalStyle.SetString(fmt.Sprintf("    Total Miles:          %.2f\n"+
-				"    Total Mileage Amount: $%.2f\n"+
-				"    Total Expenses:       $%.2f\n",
-				summary.TotalMiles,
-				summary.TotalAmount,
-				summary.TotalExpenses)).String())
-			s.WriteString("\n") // Ensure a blank line after each summary
+	// Render tabs
+	tabs := []string{"Weekly Summaries", "Trips", "Expenses"}
+	var tabLine strings.Builder
+	for i, tab := range tabs {
+		if i == m.ActiveTab {
+			tabLine.WriteString(activeTabStyle.Render(tab))
+		} else {
+			tabLine.WriteString(tabStyle.Render(tab))
+		}
+		if i < len(tabs)-1 {
+			tabLine.WriteString(" | ")
+		}
+	}
+	s.WriteString(tabLine.String() + "\n\n")
+
+	// Show content based on active tab
+	switch m.ActiveTab {
+	case TabWeeklySummaries:
+		if len(m.Data.WeeklySummaries) > 0 {
+			for _, summary := range m.Data.WeeklySummaries {
+				s.WriteString(fmt.Sprintf("Week of %s to %s:\n", summary.WeekStart, summary.WeekEnd))
+				s.WriteString(normalStyle.SetString(fmt.Sprintf("    Total Miles:          %.2f\n"+
+					"    Total Mileage Amount: $%.2f\n"+
+					"    Total Expenses:       $%.2f\n",
+					summary.TotalMiles,
+					summary.TotalAmount,
+					summary.TotalExpenses)).String())
+				s.WriteString("\n")
+			}
+		} else {
+			s.WriteString(normalStyle.Render("No weekly summaries available.\n\n"))
+		}
+
+	case TabTrips:
+		// Get trips to display (filtered or all)
+		displayTrips := m.Trips
+		if m.SearchMode {
+			displayTrips = m.filterBySearch()
+		}
+
+		// Show recurring trips
+		if len(m.RecurringTrips) > 0 {
+			s.WriteString(headerStyle.Render("Recurring Trips:") + "\n")
+			for i, trip := range m.RecurringTrips {
+				weekday := time.Weekday(trip.Weekday).String()
+				displayMiles := trip.Miles
+				if trip.Type == "round" {
+					displayMiles *= 2
+				}
+				tripLine := fmt.Sprintf("%s → %s (%.2f miles) [%s] - Every %s",
+					trip.Origin, trip.Destination, displayMiles, trip.Type, weekday)
+
+				if m.EditIndex == i {
+					tripLine = editingStyle.Render("> " + tripLine)
+				} else if m.SelectedRecurring == i {
+					tripLine = selectedStyle.Render("* " + tripLine)
+				} else {
+					tripLine = normalStyle.Render("  " + tripLine)
+				}
+				s.WriteString(tripLine + "\n")
+			}
+			s.WriteString("\n")
+		}
+
+		// Show regular trips
+		if len(displayTrips) > 0 {
+			s.WriteString(headerStyle.Render("Regular Trips:") + "\n")
+			for i, trip := range displayTrips {
+				displayMiles := trip.Miles
+				if trip.Type == "round" {
+					displayMiles *= 2
+				}
+				tripLine := fmt.Sprintf("%s → %s (%.2f miles) [%s]", trip.Origin, trip.Destination, displayMiles, trip.Type)
+
+				if m.EditIndex == i {
+					tripLine = editingStyle.Render("> " + tripLine)
+				} else if m.SelectedTrip == i {
+					tripLine = selectedStyle.Render("* " + tripLine)
+				} else {
+					tripLine = normalStyle.Render("  " + tripLine)
+				}
+				s.WriteString(tripLine + "\n")
+			}
+		} else {
+			s.WriteString(normalStyle.Render("No trips available.\n"))
+		}
+
+	case TabExpenses:
+		if len(m.Data.Expenses) > 0 {
+			for i, expense := range m.Data.Expenses {
+				expenseLine := fmt.Sprintf("%s: $%.2f - %s", expense.Date, expense.Amount, expense.Description)
+				if m.SelectedExpense == i {
+					expenseLine = selectedStyle.Render("* " + expenseLine)
+				} else {
+					expenseLine = normalStyle.Render("  " + expenseLine)
+				}
+				s.WriteString(expenseLine + "\n")
+			}
+		} else {
+			s.WriteString(normalStyle.Render("No expenses available.\n"))
 		}
 	}
 
-	// Get trips to display (filtered or all)
-	displayTrips := m.Trips
-	if m.SearchMode {
-		displayTrips = m.filterBySearch()
-	}
-
-	// Show recurring trips
-	if len(m.RecurringTrips) > 0 {
-		s.WriteString(headerStyle.Render("Recurring Trips:") + "\n")
-		for i, trip := range m.RecurringTrips {
-			weekday := time.Weekday(trip.Weekday).String()
-			displayMiles := trip.Miles
-			if trip.Type == "round" {
-				displayMiles *= 2
-			}
-			tripLine := fmt.Sprintf("%s → %s (%.2f miles) [%s] - Every %s",
-				trip.Origin, trip.Destination, displayMiles, trip.Type, weekday)
-
-			// Apply appropriate style based on selection/edit state
-			if m.EditIndex == i {
-				tripLine = editingStyle.Render("> " + tripLine)
-			} else if m.SelectedRecurring == i {
-				tripLine = selectedStyle.Render("* " + tripLine)
-			} else {
-				tripLine = normalStyle.Render("  " + tripLine)
-			}
-			s.WriteString(tripLine + "\n")
-		}
-		s.WriteString("\n")
-	}
-
-	// Show trips
-	if len(displayTrips) > 0 {
-		s.WriteString(headerStyle.Render("Trips:") + "\n")
-		for i, trip := range displayTrips {
-			displayMiles := trip.Miles
-			if trip.Type == "round" {
-				displayMiles *= 2
-			}
-			tripLine := fmt.Sprintf("%s → %s (%.2f miles) [%s]", trip.Origin, trip.Destination, displayMiles, trip.Type)
-
-			// Apply appropriate style based on selection/edit state
-			if m.EditIndex == i {
-				tripLine = editingStyle.Render("> " + tripLine)
-			} else if m.SelectedTrip == i {
-				tripLine = selectedStyle.Render("* " + tripLine)
-			} else {
-				tripLine = normalStyle.Render("  " + tripLine)
-			}
-			s.WriteString(tripLine + "\n")
-		}
-		s.WriteString("\n")
-	}
-
-	// Show expenses
-	if len(m.Data.Expenses) > 0 {
-		s.WriteString(headerStyle.Render("Expenses:") + "\n")
-		for i, expense := range m.Data.Expenses {
-			expenseLine := fmt.Sprintf("%s: $%.2f - %s", expense.Date, expense.Amount, expense.Description)
-			if m.SelectedExpense == i {
-				expenseLine = selectedStyle.Render("* " + expenseLine)
-			} else {
-				expenseLine = normalStyle.Render("  " + expenseLine)
-			}
-			s.WriteString(expenseLine + "\n")
-		}
-		s.WriteString("\n")
-	}
+	s.WriteString("\n")
 
 	// Show help text
 	s.WriteString("Controls:\n")
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#888888")).
-		SetString("↑/↓: Navigate trips and expenses\n" +
-			"Tab: Switch between trips and expenses\n" +
-			"Ctrl+E: Edit selected trip or expense\n" +
-			"Ctrl+D: Delete selected trip or expense\n" +
+		SetString("↑/↓: Navigate items\n" +
+			"Tab/Shift+Tab: Switch tabs\n" +
+			"Ctrl+E: Edit selected item\n" +
+			"Ctrl+D: Delete selected item\n" +
 			"Ctrl+F: Toggle search mode\n" +
 			"Ctrl+X: Add expense\n" +
 			"Ctrl+R: Toggle recurring trip mode or convert selected trip to recurring\n")
