@@ -32,7 +32,7 @@ func (s *FileStorage) SaveData(data *model.StorageData) error {
 		return err
 	}
 
-	return os.WriteFile(s.filePath, jsonData, 0644)
+	return os.WriteFile(s.filePath, jsonData, 0600)
 }
 
 // LoadData loads the complete data structure from the file

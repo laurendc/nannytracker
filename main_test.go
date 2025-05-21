@@ -29,7 +29,7 @@ func setupTestEnv(t *testing.T) (string, func()) {
 	// Create empty trips file with proper StorageData structure
 	tripsFile := filepath.Join(dataDir, "trips.json")
 	emptyData := `{"trips":[],"weekly_summaries":[]}`
-	if err := os.WriteFile(tripsFile, []byte(emptyData), 0644); err != nil {
+	if err := os.WriteFile(tripsFile, []byte(emptyData), 0600); err != nil {
 		t.Fatalf("Failed to create trips file: %v", err)
 	}
 
