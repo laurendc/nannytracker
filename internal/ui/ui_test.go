@@ -264,27 +264,45 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 		}
 	}
 
-	// Check if itemized trips are displayed
+	// Check if itemized trips are displayed in descending order
 	expectedTrips := []string{
-		"2024-03-17: Home → Work (10.00 miles) [single]",
 		"2024-03-18: Work → Home (30.00 miles) [round]",
+		"2024-03-17: Home → Work (10.00 miles) [single]",
 	}
 
-	for _, expected := range expectedTrips {
+	for i, expected := range expectedTrips {
 		if !strings.Contains(view, expected) {
 			t.Errorf("View does not contain expected trip: %s", expected)
 		}
+		// Verify order
+		if i > 0 {
+			prevTrip := expectedTrips[i-1]
+			prevIndex := strings.Index(view, prevTrip)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Trips not in descending order: %s appears before %s", expected, prevTrip)
+			}
+		}
 	}
 
-	// Check if itemized expenses are displayed
+	// Check if itemized expenses are displayed in descending order
 	expectedExpenses := []string{
-		"2024-03-17: $25.50 - Lunch",
 		"2024-03-18: $15.75 - Snacks",
+		"2024-03-17: $25.50 - Lunch",
 	}
 
-	for _, expected := range expectedExpenses {
+	for i, expected := range expectedExpenses {
 		if !strings.Contains(view, expected) {
 			t.Errorf("View does not contain expected expense: %s", expected)
+		}
+		// Verify order
+		if i > 0 {
+			prevExpense := expectedExpenses[i-1]
+			prevIndex := strings.Index(view, prevExpense)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Expenses not in descending order: %s appears before %s", expected, prevExpense)
+			}
 		}
 	}
 }
@@ -1315,5 +1333,221 @@ func TestTripSelection(t *testing.T) {
 	uiModel = updatedModel.(*Model)
 	if uiModel.CurrentPage != 0 {
 		t.Errorf("Expected current page to be 0, got %d", uiModel.CurrentPage)
+	}
+}
+
+func TestExpenseDisplay(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add test expenses in random order
+	expenses := []model.Expense{
+		{Date: "2024-03-20", Amount: 25.50, Description: "Lunch"},
+		{Date: "2024-03-22", Amount: 30.00, Description: "Activities"},
+		{Date: "2024-03-21", Amount: 15.75, Description: "Snacks"},
+	}
+
+	for _, expense := range expenses {
+		if err := uiModel.Data.AddExpense(expense); err != nil {
+			t.Fatalf("Failed to add expense: %v", err)
+		}
+	}
+
+	// Set active tab to Expenses
+	uiModel.ActiveTab = TabExpenses
+
+	// Get the view
+	view := uiModel.View()
+
+	// Check if expenses are displayed in descending order
+	expectedExpenses := []string{
+		"2024-03-22: $30.00 - Activities",
+		"2024-03-21: $15.75 - Snacks",
+		"2024-03-20: $25.50 - Lunch",
+	}
+
+	for i, expected := range expectedExpenses {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected expense: %s", expected)
+		}
+		// Verify order
+		if i > 0 {
+			prevExpense := expectedExpenses[i-1]
+			prevIndex := strings.Index(view, prevExpense)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Expenses not in descending order: %s appears before %s", expected, prevExpense)
+			}
+		}
+	}
+}
+
+func TestExpensePagination(t *testing.T) {
+	m := &Model{
+		Data: &model.StorageData{
+			Expenses: []model.Expense{
+				{Date: "2024-03-27", Amount: 10.00, Description: "Expense 1"},
+				{Date: "2024-03-26", Amount: 20.00, Description: "Expense 2"},
+				{Date: "2024-03-25", Amount: 30.00, Description: "Expense 3"},
+				{Date: "2024-03-24", Amount: 40.00, Description: "Expense 4"},
+				{Date: "2024-03-23", Amount: 50.00, Description: "Expense 5"},
+				{Date: "2024-03-22", Amount: 60.00, Description: "Expense 6"},
+				{Date: "2024-03-21", Amount: 70.00, Description: "Expense 7"},
+				{Date: "2024-03-20", Amount: 80.00, Description: "Expense 8"},
+				{Date: "2024-03-19", Amount: 90.00, Description: "Expense 9"},
+				{Date: "2024-03-18", Amount: 100.00, Description: "Expense 10"},
+				{Date: "2024-03-17", Amount: 110.00, Description: "Expense 11"},
+			},
+		},
+		PageSize:    5,
+		CurrentPage: 0,
+		ActiveTab:   TabExpenses,
+	}
+
+	// Test first page
+	view := m.View()
+	if !strings.Contains(view, "Page 1 of 3 (Showing 1-5 of 11 expenses)") {
+		t.Errorf("View does not contain pagination information")
+	}
+
+	// Test second page
+	m.CurrentPage = 1
+	view = m.View()
+	if !strings.Contains(view, "Page 2 of 3 (Showing 6-10 of 11 expenses)") {
+		t.Errorf("View does not contain second page information")
+	}
+
+	// Test third page
+	m.CurrentPage = 2
+	view = m.View()
+	if !strings.Contains(view, "Page 3 of 3 (Showing 11-11 of 11 expenses)") {
+		t.Errorf("View does not contain third page information")
+	}
+
+	// Test expense sorting
+	if !strings.Contains(view, "2024-03-17: $110.00 - Expense 11") {
+		t.Errorf("Expenses are not sorted by date in descending order")
+	}
+}
+
+func TestWeeklySummarySorting(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add trips and expenses in random order
+	trips := []model.Trip{
+		{Date: "2024-03-18", Origin: "Work", Destination: "Home", Miles: 15.0, Type: "round"},
+		{Date: "2024-03-17", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"},
+		{Date: "2024-03-25", Origin: "Work", Destination: "Home", Miles: 25.0, Type: "round"},
+		{Date: "2024-03-24", Origin: "Home", Destination: "Work", Miles: 20.0, Type: "single"},
+	}
+
+	expenses := []model.Expense{
+		{Date: "2024-03-18", Amount: 15.75, Description: "Snacks"},
+		{Date: "2024-03-17", Amount: 25.50, Description: "Lunch"},
+		{Date: "2024-03-25", Amount: 30.00, Description: "Activities"},
+		{Date: "2024-03-24", Amount: 35.25, Description: "Materials"},
+	}
+
+	for _, trip := range trips {
+		uiModel.AddTrip(trip)
+	}
+
+	for _, expense := range expenses {
+		if err := uiModel.Data.AddExpense(expense); err != nil {
+			t.Fatalf("Failed to add expense: %v", err)
+		}
+	}
+
+	model.CalculateAndUpdateWeeklySummaries(uiModel.Data, uiModel.RatePerMile)
+
+	// Set active tab to Weekly Summaries
+	uiModel.ActiveTab = TabWeeklySummaries
+
+	// Test first week's sorting
+	view := uiModel.View()
+	expectedTrips := []string{
+		"2024-03-18: Work → Home (30.00 miles) [round]",
+		"2024-03-17: Home → Work (10.00 miles) [single]",
+	}
+
+	for i, expected := range expectedTrips {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected trip: %s", expected)
+		}
+
+		if i > 0 {
+			prevTrip := expectedTrips[i-1]
+			prevIndex := strings.Index(view, prevTrip)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Trips not in descending order: %s appears before %s", expected, prevTrip)
+			}
+		}
+	}
+
+	expectedExpenses := []string{
+		"2024-03-18: $15.75 - Snacks",
+		"2024-03-17: $25.50 - Lunch",
+	}
+
+	for i, expected := range expectedExpenses {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected expense: %s", expected)
+		}
+
+		if i > 0 {
+			prevExpense := expectedExpenses[i-1]
+			prevIndex := strings.Index(view, prevExpense)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Expenses not in descending order: %s appears before %s", expected, prevExpense)
+			}
+		}
+	}
+
+	// Test second week's sorting
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyRight})
+	uiModel = updatedModel.(*Model)
+	view = uiModel.View()
+
+	expectedTrips = []string{
+		"2024-03-25: Work → Home (50.00 miles) [round]",
+		"2024-03-24: Home → Work (20.00 miles) [single]",
+	}
+
+	for i, expected := range expectedTrips {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected trip: %s", expected)
+		}
+
+		if i > 0 {
+			prevTrip := expectedTrips[i-1]
+			prevIndex := strings.Index(view, prevTrip)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Trips not in descending order: %s appears before %s", expected, prevTrip)
+			}
+		}
+	}
+
+	expectedExpenses = []string{
+		"2024-03-25: $30.00 - Activities",
+		"2024-03-24: $35.25 - Materials",
+	}
+
+	for i, expected := range expectedExpenses {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected expense: %s", expected)
+		}
+
+		if i > 0 {
+			prevExpense := expectedExpenses[i-1]
+			prevIndex := strings.Index(view, prevExpense)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Expenses not in descending order: %s appears before %s", expected, prevExpense)
+			}
+		}
 	}
 }
