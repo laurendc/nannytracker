@@ -22,14 +22,14 @@ func setupTestEnv(t *testing.T) (string, func()) {
 
 	// Create the .nannytracker directory
 	dataDir := filepath.Join(tempDir, ".nannytracker")
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0750); err != nil {
 		t.Fatalf("Failed to create data dir: %v", err)
 	}
 
 	// Create empty trips file with proper StorageData structure
 	tripsFile := filepath.Join(dataDir, "trips.json")
 	emptyData := `{"trips":[],"weekly_summaries":[]}`
-	if err := os.WriteFile(tripsFile, []byte(emptyData), 0644); err != nil {
+	if err := os.WriteFile(tripsFile, []byte(emptyData), 0600); err != nil {
 		t.Fatalf("Failed to create trips file: %v", err)
 	}
 
@@ -200,7 +200,7 @@ func TestStorage(t *testing.T) {
 	}
 
 	// Ensure data directory exists
-	if err := os.MkdirAll(cfg.DataDir, 0755); err != nil {
+	if err := os.MkdirAll(cfg.DataDir, 0750); err != nil {
 		t.Fatalf("Failed to create data directory: %v", err)
 	}
 
