@@ -657,6 +657,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.SelectedTrip = startIdx
 					}
 				}
+			} else if m.ActiveTab == TabExpenses && m.CurrentPage > 0 {
+				m.CurrentPage--
+				// Adjust selected expense to stay within the current page
+				if m.SelectedExpense >= 0 {
+					startIdx := m.CurrentPage * m.PageSize
+					if m.SelectedExpense < startIdx {
+						m.SelectedExpense = startIdx
+					}
+				}
 			}
 			return m, cmd
 		case tea.KeyRight:
@@ -678,6 +687,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Adjust selected trip to stay within the current page
 					if m.SelectedTrip >= 0 {
 						m.SelectedTrip = 0
+					}
+				}
+			} else if m.ActiveTab == TabExpenses {
+				if m.CurrentPage < (len(m.Data.Expenses)-1)/m.PageSize {
+					m.CurrentPage++
+					// Adjust selected expense to stay within the current page
+					if m.SelectedExpense >= 0 {
+						m.SelectedExpense = 0
 					}
 				}
 			}
@@ -807,9 +824,13 @@ func (m *Model) View() string {
 				summary.TotalAmount,
 				summary.TotalExpenses)).String())
 
-			// Display itemized trips
+			// Display itemized trips sorted by date (most recent first)
 			if len(summary.Trips) > 0 {
 				s.WriteString("\n    Trips:\n")
+				// Sort trips by date in descending order
+				sort.Slice(summary.Trips, func(i, j int) bool {
+					return summary.Trips[i].Date > summary.Trips[j].Date
+				})
 				for _, trip := range summary.Trips {
 					displayMiles := trip.Miles
 					if trip.Type == "round" {
@@ -821,9 +842,13 @@ func (m *Model) View() string {
 				}
 			}
 
-			// Display itemized expenses
+			// Display itemized expenses sorted by date (most recent first)
 			if len(summary.Expenses) > 0 {
 				s.WriteString("\n    Expenses:\n")
+				// Sort expenses by date in descending order
+				sort.Slice(summary.Expenses, func(i, j int) bool {
+					return summary.Expenses[i].Date > summary.Expenses[j].Date
+				})
 				for _, expense := range summary.Expenses {
 					expenseLine := fmt.Sprintf("      %s: $%.2f - %s",
 						expense.Date, expense.Amount, expense.Description)
@@ -913,7 +938,21 @@ func (m *Model) View() string {
 
 	case TabExpenses:
 		if len(m.Data.Expenses) > 0 {
-			for i, expense := range m.Data.Expenses {
+			// Sort expenses by date in descending order
+			sort.Slice(m.Data.Expenses, func(i, j int) bool {
+				return m.Data.Expenses[i].Date > m.Data.Expenses[j].Date
+			})
+
+			// Calculate pagination
+			startIdx := m.CurrentPage * m.PageSize
+			endIdx := startIdx + m.PageSize
+			if endIdx > len(m.Data.Expenses) {
+				endIdx = len(m.Data.Expenses)
+			}
+
+			// Display expenses for current page
+			for i := startIdx; i < endIdx; i++ {
+				expense := m.Data.Expenses[i]
 				expenseLine := fmt.Sprintf("%s: $%.2f - %s", expense.Date, expense.Amount, expense.Description)
 				if m.SelectedExpense == i {
 					expenseLine = selectedStyle.Render("* " + expenseLine)
@@ -921,6 +960,14 @@ func (m *Model) View() string {
 					expenseLine = normalStyle.Render("  " + expenseLine)
 				}
 				s.WriteString(expenseLine + "\n")
+			}
+
+			// Show pagination info
+			totalPages := (len(m.Data.Expenses) + m.PageSize - 1) / m.PageSize
+			if totalPages > 1 {
+				paginationInfo := fmt.Sprintf("\nPage %d of %d (Showing %d-%d of %d expenses)",
+					m.CurrentPage+1, totalPages, startIdx+1, endIdx, len(m.Data.Expenses))
+				s.WriteString(normalStyle.Render(paginationInfo) + "\n")
 			}
 		} else {
 			s.WriteString(normalStyle.Render("No expenses available.\n"))
