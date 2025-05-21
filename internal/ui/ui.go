@@ -875,16 +875,13 @@ func (m *Model) View() string {
 				return displayTrips[i].Date > displayTrips[j].Date
 			})
 			startIdx := m.CurrentPage * m.PageSize
-			if m.CurrentPage < (len(displayTrips)-1)/m.PageSize {
-				m.CurrentPage++
-				// Adjust selected trip to stay within the current page
-				if m.SelectedTrip >= 0 {
-					m.SelectedTrip = 0
-				}
+			endIdx := startIdx + m.PageSize
+			if endIdx > len(displayTrips) {
+				endIdx = len(displayTrips)
 			}
 
 			// Display trips for current page
-			for i := startIdx; i < len(displayTrips); i++ {
+			for i := startIdx; i < endIdx; i++ {
 				trip := displayTrips[i]
 				displayMiles := trip.Miles
 				if trip.Type == "round" {
@@ -907,7 +904,7 @@ func (m *Model) View() string {
 			totalPages := (len(displayTrips) + m.PageSize - 1) / m.PageSize
 			if totalPages > 1 {
 				paginationInfo := fmt.Sprintf("\nPage %d of %d (Showing %d-%d of %d trips)",
-					m.CurrentPage+1, totalPages, startIdx+1, len(displayTrips), len(displayTrips))
+					m.CurrentPage+1, totalPages, startIdx+1, endIdx, len(displayTrips))
 				s.WriteString(normalStyle.Render(paginationInfo) + "\n")
 			}
 		} else {
