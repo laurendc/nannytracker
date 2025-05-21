@@ -14,7 +14,7 @@ func setupTestEnv(t *testing.T) (string, func()) {
 
 	// Create the .nannytracker directory
 	dataDir := filepath.Join(tempDir, ".nannytracker")
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
+	if err := os.MkdirAll(dataDir, 0750); err != nil {
 		t.Fatalf("Failed to create data dir: %v", err)
 	}
 
