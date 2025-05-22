@@ -69,7 +69,7 @@ func New(storage storage.Storage, ratePerMile float64) (*Model, error) {
 	ti.CharLimit = 156
 	ti.Width = 50
 
-	return &Model{
+	m := &Model{
 		TextInput:         ti,
 		Trips:             data.Trips,
 		CurrentTrip:       model.Trip{},
@@ -86,7 +86,9 @@ func New(storage storage.Storage, ratePerMile float64) (*Model, error) {
 		PageSize:          10, // Default page size
 		CurrentPage:       0,  // Start at first page
 		TripTemplates:     data.TripTemplates,
-	}, nil
+	}
+	m.SelectedWeek = m.getCurrentWeekIndex()
+	return m, nil
 }
 
 // NewWithClient creates a new UI model with a provided maps client (useful for testing)
@@ -107,7 +109,7 @@ func NewWithClient(storage storage.Storage, ratePerMile float64, mapsClient maps
 	ti.CharLimit = 156
 	ti.Width = 50
 
-	return &Model{
+	m := &Model{
 		TextInput:         ti,
 		Trips:             data.Trips,
 		CurrentTrip:       model.Trip{},
@@ -124,7 +126,9 @@ func NewWithClient(storage storage.Storage, ratePerMile float64, mapsClient maps
 		PageSize:          10, // Default page size
 		CurrentPage:       0,  // Start at first page
 		TripTemplates:     data.TripTemplates,
-	}, nil
+	}
+	m.SelectedWeek = m.getCurrentWeekIndex()
+	return m, nil
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -965,7 +969,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Reset selections when changing tabs
 			m.CurrentPage = 0
-			m.SelectedWeek = -1
+			if m.ActiveTab == TabWeeklySummaries {
+				m.SelectedWeek = m.getCurrentWeekIndex() // Show week containing today
+			} else {
+				m.SelectedWeek = -1
+			}
 			m.SelectedTrip = -1
 			m.SelectedExpense = -1
 			m.SelectedTemplate = -1
@@ -984,7 +992,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Reset selections when changing tabs
 			m.CurrentPage = 0
-			m.SelectedWeek = -1
+			if m.ActiveTab == TabWeeklySummaries {
+				m.SelectedWeek = m.getCurrentWeekIndex() // Show week containing today
+			} else {
+				m.SelectedWeek = -1
+			}
 			m.SelectedTrip = -1
 			m.SelectedExpense = -1
 			m.SelectedTemplate = -1
@@ -1356,4 +1368,24 @@ func (m *Model) AddTrip(trip model.Trip) {
 	if err := m.Storage.SaveData(m.Data); err != nil {
 		m.Err = err
 	}
+}
+
+// Helper: find the index of the week containing today
+func (m *Model) getCurrentWeekIndex() int {
+	today := time.Now().Format("2006-01-02")
+	todayTime, err := time.Parse("2006-01-02", today)
+	if err != nil {
+		return 0
+	}
+	for i, summary := range m.Data.WeeklySummaries {
+		start, err1 := time.Parse("2006-01-02", summary.WeekStart)
+		end, err2 := time.Parse("2006-01-02", summary.WeekEnd)
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		if !todayTime.Before(start) && !todayTime.After(end) {
+			return i
+		}
+	}
+	return 0 // fallback to most recent week
 }
