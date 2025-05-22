@@ -247,34 +247,27 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 
 	model.CalculateAndUpdateWeeklySummaries(uiModel.Data, uiModel.RatePerMile)
 
-	// Get the view
+	// Check the most recent week (default selected)
 	view := uiModel.View()
-
-	// Check if weekly summaries are displayed with totals
 	expectedSummaries := []string{
-		"Week of 2024-03-17 to 2024-03-23 (Week 1 of 2):",
-		"    Total Miles:          40.00",  // 10 + (15 * 2)
-		"    Total Mileage Amount: $26.20", // 40 * 0.655
-		"    Total Expenses:       $41.25", // 25.50 + 15.75
+		"Week of 2024-03-24 to 2024-03-30 (Week 1 of 2):",
+		"    Total Miles:          70.00",
+		"    Total Mileage Amount: $45.85",
+		"    Total Expenses:       $30.00",
 	}
-
 	for _, expected := range expectedSummaries {
 		if !strings.Contains(view, expected) {
 			t.Errorf("View does not contain expected weekly summary: %s", expected)
 		}
 	}
-
-	// Check if itemized trips are displayed in descending order
 	expectedTrips := []string{
-		"2024-03-18: Work → Home (30.00 miles) [round]",
-		"2024-03-17: Home → Work (10.00 miles) [single]",
+		"2024-03-25: Work → Home (50.00 miles) [round]",
+		"2024-03-24: Home → Work (20.00 miles) [single]",
 	}
-
 	for i, expected := range expectedTrips {
 		if !strings.Contains(view, expected) {
 			t.Errorf("View does not contain expected trip: %s", expected)
 		}
-		// Verify order
 		if i > 0 {
 			prevTrip := expectedTrips[i-1]
 			prevIndex := strings.Index(view, prevTrip)
@@ -284,18 +277,55 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 			}
 		}
 	}
-
-	// Check if itemized expenses are displayed in descending order
 	expectedExpenses := []string{
+		"2024-03-24: $30.00 - Activities",
+	}
+	for _, expected := range expectedExpenses {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected expense: %s", expected)
+		}
+	}
+
+	// Move to the second week (older week)
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyRight})
+	uiModel = updatedModel.(*Model)
+	view = uiModel.View()
+	expectedSummaries = []string{
+		"Week of 2024-03-17 to 2024-03-23 (Week 2 of 2):",
+		"    Total Miles:          40.00",
+		"    Total Mileage Amount: $26.20",
+		"    Total Expenses:       $41.25",
+	}
+	for _, expected := range expectedSummaries {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected weekly summary: %s", expected)
+		}
+	}
+	expectedTrips = []string{
+		"2024-03-18: Work → Home (30.00 miles) [round]",
+		"2024-03-17: Home → Work (10.00 miles) [single]",
+	}
+	for i, expected := range expectedTrips {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected trip: %s", expected)
+		}
+		if i > 0 {
+			prevTrip := expectedTrips[i-1]
+			prevIndex := strings.Index(view, prevTrip)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Trips not in descending order: %s appears before %s", expected, prevTrip)
+			}
+		}
+	}
+	expectedExpenses = []string{
 		"2024-03-18: $15.75 - Snacks",
 		"2024-03-17: $25.50 - Lunch",
 	}
-
 	for i, expected := range expectedExpenses {
 		if !strings.Contains(view, expected) {
 			t.Errorf("View does not contain expected expense: %s", expected)
 		}
-		// Verify order
 		if i > 0 {
 			prevExpense := expectedExpenses[i-1]
 			prevIndex := strings.Index(view, prevExpense)
@@ -1467,19 +1497,20 @@ func TestWeeklySummarySorting(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
-	// Add trips and expenses in random order
+	// Add trips for different weeks
 	trips := []model.Trip{
-		{Date: "2024-03-18", Origin: "Work", Destination: "Home", Miles: 15.0, Type: "round"},
-		{Date: "2024-03-17", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"},
-		{Date: "2024-03-25", Origin: "Work", Destination: "Home", Miles: 25.0, Type: "round"},
-		{Date: "2024-03-24", Origin: "Home", Destination: "Work", Miles: 20.0, Type: "single"},
+		{Date: "2024-03-17", Origin: "Home", Destination: "Work", Miles: 10.0, Type: "single"}, // Week 1
+		{Date: "2024-03-18", Origin: "Work", Destination: "Home", Miles: 15.0, Type: "round"},  // Week 1
+		{Date: "2024-03-24", Origin: "Home", Destination: "Work", Miles: 20.0, Type: "single"}, // Week 2
+		{Date: "2024-03-25", Origin: "Work", Destination: "Home", Miles: 25.0, Type: "round"},  // Week 2
 	}
 
+	// Add expenses for different weeks
 	expenses := []model.Expense{
-		{Date: "2024-03-18", Amount: 15.75, Description: "Snacks"},
-		{Date: "2024-03-17", Amount: 25.50, Description: "Lunch"},
-		{Date: "2024-03-25", Amount: 30.00, Description: "Activities"},
-		{Date: "2024-03-24", Amount: 35.25, Description: "Materials"},
+		{Date: "2024-03-17", Amount: 25.50, Description: "Lunch"},      // Week 1
+		{Date: "2024-03-18", Amount: 15.75, Description: "Snacks"},     // Week 1
+		{Date: "2024-03-24", Amount: 30.00, Description: "Activities"}, // Week 2
+		{Date: "2024-03-25", Amount: 35.25, Description: "Materials"},  // Week 2
 	}
 
 	for _, trip := range trips {
@@ -1497,54 +1528,9 @@ func TestWeeklySummarySorting(t *testing.T) {
 	// Set active tab to Weekly Summaries
 	uiModel.ActiveTab = TabWeeklySummaries
 
-	// Test first week's sorting
+	// Test first week's sorting (most recent week)
 	view := uiModel.View()
 	expectedTrips := []string{
-		"2024-03-18: Work → Home (30.00 miles) [round]",
-		"2024-03-17: Home → Work (10.00 miles) [single]",
-	}
-
-	for i, expected := range expectedTrips {
-		if !strings.Contains(view, expected) {
-			t.Errorf("View does not contain expected trip: %s", expected)
-		}
-
-		if i > 0 {
-			prevTrip := expectedTrips[i-1]
-			prevIndex := strings.Index(view, prevTrip)
-			currentIndex := strings.Index(view, expected)
-			if prevIndex > currentIndex {
-				t.Errorf("Trips not in descending order: %s appears before %s", expected, prevTrip)
-			}
-		}
-	}
-
-	expectedExpenses := []string{
-		"2024-03-18: $15.75 - Snacks",
-		"2024-03-17: $25.50 - Lunch",
-	}
-
-	for i, expected := range expectedExpenses {
-		if !strings.Contains(view, expected) {
-			t.Errorf("View does not contain expected expense: %s", expected)
-		}
-
-		if i > 0 {
-			prevExpense := expectedExpenses[i-1]
-			prevIndex := strings.Index(view, prevExpense)
-			currentIndex := strings.Index(view, expected)
-			if prevIndex > currentIndex {
-				t.Errorf("Expenses not in descending order: %s appears before %s", expected, prevExpense)
-			}
-		}
-	}
-
-	// Test second week's sorting
-	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyRight})
-	uiModel = updatedModel.(*Model)
-	view = uiModel.View()
-
-	expectedTrips = []string{
 		"2024-03-25: Work → Home (50.00 miles) [round]",
 		"2024-03-24: Home → Work (20.00 miles) [single]",
 	}
@@ -1564,9 +1550,54 @@ func TestWeeklySummarySorting(t *testing.T) {
 		}
 	}
 
+	expectedExpenses := []string{
+		"2024-03-25: $35.25 - Materials",
+		"2024-03-24: $30.00 - Activities",
+	}
+
+	for i, expected := range expectedExpenses {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected expense: %s", expected)
+		}
+
+		if i > 0 {
+			prevExpense := expectedExpenses[i-1]
+			prevIndex := strings.Index(view, prevExpense)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Expenses not in descending order: %s appears before %s", expected, prevExpense)
+			}
+		}
+	}
+
+	// Test second week's sorting (older week)
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyRight})
+	uiModel = updatedModel.(*Model)
+	view = uiModel.View()
+
+	expectedTrips = []string{
+		"2024-03-18: Work → Home (30.00 miles) [round]",
+		"2024-03-17: Home → Work (10.00 miles) [single]",
+	}
+
+	for i, expected := range expectedTrips {
+		if !strings.Contains(view, expected) {
+			t.Errorf("View does not contain expected trip: %s", expected)
+		}
+
+		if i > 0 {
+			prevTrip := expectedTrips[i-1]
+			prevIndex := strings.Index(view, prevTrip)
+			currentIndex := strings.Index(view, expected)
+			if prevIndex > currentIndex {
+				t.Errorf("Trips not in descending order: %s appears before %s", expected, prevTrip)
+			}
+		}
+	}
+
 	expectedExpenses = []string{
-		"2024-03-25: $30.00 - Activities",
-		"2024-03-24: $35.25 - Materials",
+		"2024-03-18: $15.75 - Snacks",
+		"2024-03-17: $25.50 - Lunch",
 	}
 
 	for i, expected := range expectedExpenses {

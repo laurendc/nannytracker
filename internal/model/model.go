@@ -179,14 +179,14 @@ func CalculateWeeklySummaries(trips []Trip, expenses []Expense, ratePerMile floa
 		return nil
 	}
 
-	// Sort trips by date
+	// Sort trips by date in descending order
 	sort.Slice(trips, func(i, j int) bool {
-		return trips[i].Date < trips[j].Date
+		return trips[i].Date > trips[j].Date
 	})
 
-	// Sort expenses by date
+	// Sort expenses by date in descending order
 	sort.Slice(expenses, func(i, j int) bool {
-		return expenses[i].Date < expenses[j].Date
+		return expenses[i].Date > expenses[j].Date
 	})
 
 	// Group trips and expenses by week
@@ -199,6 +199,7 @@ func CalculateWeeklySummaries(trips []Trip, expenses []Expense, ratePerMile floa
 		if err != nil {
 			continue
 		}
+		// Adjust to start of week (Sunday)
 		weekStart := t.AddDate(0, 0, -int(t.Weekday()))
 		weekKey := weekStart.Format("2006-01-02")
 		weeklyTrips[weekKey] = append(weeklyTrips[weekKey], trip)
@@ -210,6 +211,7 @@ func CalculateWeeklySummaries(trips []Trip, expenses []Expense, ratePerMile floa
 		if err != nil {
 			continue
 		}
+		// Adjust to start of week (Sunday)
 		weekStart := t.AddDate(0, 0, -int(t.Weekday()))
 		weekKey := weekStart.Format("2006-01-02")
 		weeklyExpenses[weekKey] = append(weeklyExpenses[weekKey], expense)
@@ -227,20 +229,46 @@ func CalculateWeeklySummaries(trips []Trip, expenses []Expense, ratePerMile floa
 		allWeeks[week] = true
 	}
 
-	for weekStart := range allWeeks {
-		weekTrips := weeklyTrips[weekStart]
-		weekExpenses := weeklyExpenses[weekStart]
+	// Convert week keys to time.Time for proper sorting
+	var weekTimes []time.Time
+	for week := range allWeeks {
+		t, err := time.Parse("2006-01-02", week)
+		if err != nil {
+			continue
+		}
+		weekTimes = append(weekTimes, t)
+	}
+
+	// Sort weeks in descending order (most recent first)
+	sort.Slice(weekTimes, func(i, j int) bool {
+		return weekTimes[i].After(weekTimes[j])
+	})
+
+	// Create summaries in sorted order
+	for _, weekTime := range weekTimes {
+		weekKey := weekTime.Format("2006-01-02")
+		weekTrips := weeklyTrips[weekKey]
+		weekExpenses := weeklyExpenses[weekKey]
+
+		// Sort trips within the week in descending order
+		sort.Slice(weekTrips, func(i, j int) bool {
+			return weekTrips[i].Date > weekTrips[j].Date
+		})
+
+		// Sort expenses within the week in descending order
+		sort.Slice(weekExpenses, func(i, j int) bool {
+			return weekExpenses[i].Date > weekExpenses[j].Date
+		})
 
 		totalMiles := CalculateTotalMiles(weekTrips)
 		totalAmount := CalculateReimbursement(weekTrips, ratePerMile)
 		totalExpenses := CalculateTotalExpenses(weekExpenses)
 
 		// Calculate week end date
-		start, _ := time.Parse("2006-01-02", weekStart)
-		weekEnd := start.AddDate(0, 0, 6).Format("2006-01-02")
+		weekEnd := weekTime.AddDate(0, 0, 6).Format("2006-01-02")
 
 		summaries = append(summaries, WeeklySummary{
-			WeekStart:     weekStart,
+			WeekStart:     weekKey,
 			WeekEnd:       weekEnd,
 			TotalMiles:    totalMiles,
 			TotalAmount:   totalAmount,
@@ -249,11 +277,6 @@ func CalculateWeeklySummaries(trips []Trip, expenses []Expense, ratePerMile floa
 			Expenses:      weekExpenses,
 		})
 	}
-
-	// Sort summaries by week start date
-	sort.Slice(summaries, func(i, j int) bool {
-		return summaries[i].WeekStart < summaries[j].WeekStart
-	})
 
 	return summaries
 }
