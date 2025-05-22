@@ -1,0 +1,48 @@
+name: Cleanup Stale Branches
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly on Sunday at midnight
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Cleanup stale branches
+        run: |
+          # Get all branches except main
+          BRANCHES=$(git branch -r | grep -v 'origin/main$' | grep -v 'origin/HEAD' | sed 's/origin\///')
+          
+          for branch in $BRANCHES; do
+            # Skip protected branches
+            if [[ "$branch" == "main" || "$branch" == "master" ]]; then
+              continue
+            fi
+            
+            # Get the last commit date
+            LAST_COMMIT_DATE=$(git log -1 --format=%ct origin/$branch)
+            CURRENT_DATE=$(date +%s)
+            DAYS_SINCE_LAST_COMMIT=$(( ($CURRENT_DATE - $LAST_COMMIT_DATE) / 86400 ))
+            
+            # Delete branch if it's older than 7 days and has no open PRs
+            if [ $DAYS_SINCE_LAST_COMMIT -gt 7 ]; then
+              # Check if branch has open PRs
+              PR_COUNT=$(gh pr list --search "head:$branch" --json number --jq length)
+              if [ $PR_COUNT -eq 0 ]; then
+                echo "Deleting stale branch: $branch"
+                git push origin --delete $branch
+              else
+                echo "Skipping branch $branch - has open PRs"
+              fi
+            fi
+          done 
