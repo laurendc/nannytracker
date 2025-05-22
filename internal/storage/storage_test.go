@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/lauren/nannytracker/internal/model"
+	"github.com/laurendc/nannytracker/internal/model"
 )
 
 func TestStorage(t *testing.T) {

@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/lauren/nannytracker/internal/maps"
-	"github.com/lauren/nannytracker/internal/model"
-	"github.com/lauren/nannytracker/internal/storage"
+	"github.com/laurendc/nannytracker/internal/maps"
+	"github.com/laurendc/nannytracker/internal/model"
+	"github.com/laurendc/nannytracker/internal/storage"
 )
 
 func setupTestUI(t *testing.T) (*Model, func()) {

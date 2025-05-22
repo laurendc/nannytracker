@@ -1,4 +1,4 @@
-module github.com/lauren/nannytracker
+module github.com/laurendc/nannytracker
 
 go 1.23.0
 

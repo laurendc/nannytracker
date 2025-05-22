@@ -11,9 +11,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/lauren/nannytracker/internal/maps"
-	"github.com/lauren/nannytracker/internal/model"
-	"github.com/lauren/nannytracker/internal/storage"
+	"github.com/laurendc/nannytracker/internal/maps"
+	"github.com/laurendc/nannytracker/internal/model"
+	"github.com/laurendc/nannytracker/internal/storage"
 )
 
 // Model represents the UI state

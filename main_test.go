@@ -7,11 +7,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/lauren/nannytracker/internal/maps"
-	"github.com/lauren/nannytracker/internal/model"
-	"github.com/lauren/nannytracker/internal/storage"
-	"github.com/lauren/nannytracker/internal/ui"
-	"github.com/lauren/nannytracker/pkg/config"
+	"github.com/laurendc/nannytracker/internal/maps"
+	"github.com/laurendc/nannytracker/internal/model"
+	"github.com/laurendc/nannytracker/internal/storage"
+	"github.com/laurendc/nannytracker/internal/ui"
+	"github.com/laurendc/nannytracker/pkg/config"
 )
 
 func setupTestEnv(t *testing.T) (string, func()) {

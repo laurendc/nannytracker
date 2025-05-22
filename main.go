@@ -7,10 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/joho/godotenv"
-	"github.com/lauren/nannytracker/internal/maps"
-	"github.com/lauren/nannytracker/internal/storage"
-	"github.com/lauren/nannytracker/internal/ui"
-	"github.com/lauren/nannytracker/pkg/config"
+	"github.com/laurendc/nannytracker/internal/maps"
+	"github.com/laurendc/nannytracker/internal/storage"
+	"github.com/laurendc/nannytracker/internal/ui"
+	"github.com/laurendc/nannytracker/pkg/config"
 )
 
 func main() {

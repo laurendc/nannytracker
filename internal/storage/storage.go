@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/lauren/nannytracker/internal/model"
+	"github.com/laurendc/nannytracker/internal/model"
 )
 
 // Storage defines the interface for trip data persistence

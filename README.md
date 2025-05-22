@@ -44,7 +44,7 @@ The application uses the following core data structures:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/lauren/nannytracker.git
+git clone https://github.com/laurendc/nannytracker.git
 cd nannytracker
 ```
 
