@@ -40,6 +40,7 @@ func (s *FileStorage) LoadData() (*model.StorageData, error) {
 	data := &model.StorageData{
 		Trips:           make([]model.Trip, 0),
 		WeeklySummaries: make([]model.WeeklySummary, 0),
+		TripTemplates:   make([]model.TripTemplate, 0),
 	}
 
 	fileData, err := os.ReadFile(s.filePath)

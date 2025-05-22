@@ -264,6 +264,7 @@ type StorageData struct {
 	RecurringTrips  []RecurringTrip `json:"recurring_trips"`
 	Expenses        []Expense       `json:"expenses"`
 	WeeklySummaries []WeeklySummary `json:"weekly_summaries"`
+	TripTemplates   []TripTemplate  `json:"trip_templates"`
 	ReferenceDate   string          `json:"reference_date,omitempty"` // For testing purposes
 }
 
@@ -442,5 +443,52 @@ func (d *StorageData) AddTrip(trip Trip) error {
 		return err
 	}
 	d.Trips = append(d.Trips, trip)
+	return nil
+}
+
+// AddTripTemplate adds a new trip template to the storage data
+func (d *StorageData) AddTripTemplate(template TripTemplate) error {
+	if err := template.Validate(); err != nil {
+		return err
+	}
+	d.TripTemplates = append(d.TripTemplates, template)
+	return nil
+}
+
+// EditTripTemplate updates a trip template at the specified index
+func (d *StorageData) EditTripTemplate(index int, newTemplate TripTemplate) error {
+	if index < 0 || index >= len(d.TripTemplates) {
+		return errors.New("invalid template index")
+	}
+	if err := newTemplate.Validate(); err != nil {
+		return err
+	}
+	d.TripTemplates[index] = newTemplate
+	return nil
+}
+
+// DeleteTripTemplate removes a trip template at the specified index
+func (d *StorageData) DeleteTripTemplate(index int) error {
+	if index < 0 || index >= len(d.TripTemplates) {
+		return errors.New("invalid template index")
+	}
+	d.TripTemplates = append(d.TripTemplates[:index], d.TripTemplates[index+1:]...)
+	return nil
+}
+
+// ValidateDate checks if a date string is in the correct format
+func ValidateDate(date string) error {
+	if date == "" {
+		return errors.New("date cannot be empty")
+	}
+	// Validate date format (YYYY-MM-DD)
+	parsedDate, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return errors.New("date must be in YYYY-MM-DD format")
+	}
+	// Check for invalid year (less than 1000)
+	if parsedDate.Year() < 1000 {
+		return errors.New("year must be at least 1000")
+	}
 	return nil
 }
