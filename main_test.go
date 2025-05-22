@@ -221,6 +221,22 @@ func TestStorage(t *testing.T) {
 				TotalAmount: 4.91,
 			},
 		},
+		TripTemplates: []model.TripTemplate{
+			{
+				Name:        "Home to Work",
+				Origin:      "Home",
+				Destination: "Work",
+				TripType:    "single",
+				Notes:       "Regular commute",
+			},
+			{
+				Name:        "Work to Store",
+				Origin:      "Work",
+				Destination: "Store",
+				TripType:    "round",
+				Notes:       "Shopping trip",
+			},
+		},
 	}
 
 	if err := store.SaveData(data); err != nil {
@@ -247,6 +263,10 @@ func TestStorage(t *testing.T) {
 		t.Errorf("Expected %d weekly summaries, got %d", len(data.WeeklySummaries), len(loadedData.WeeklySummaries))
 	}
 
+	if len(loadedData.TripTemplates) != len(data.TripTemplates) {
+		t.Errorf("Expected %d trip templates, got %d", len(data.TripTemplates), len(loadedData.TripTemplates))
+	}
+
 	// Verify trip data
 	for i, trip := range data.Trips {
 		if loadedData.Trips[i].Date != trip.Date {
@@ -260,6 +280,9 @@ func TestStorage(t *testing.T) {
 		}
 		if loadedData.Trips[i].Miles != trip.Miles {
 			t.Errorf("Trip %d: expected miles %.2f, got %.2f", i, trip.Miles, loadedData.Trips[i].Miles)
+		}
+		if loadedData.Trips[i].Type != trip.Type {
+			t.Errorf("Trip %d: expected type %s, got %s", i, trip.Type, loadedData.Trips[i].Type)
 		}
 	}
 
@@ -276,6 +299,25 @@ func TestStorage(t *testing.T) {
 		}
 		if loadedData.WeeklySummaries[i].TotalAmount != summary.TotalAmount {
 			t.Errorf("Summary %d: expected total amount %.2f, got %.2f", i, summary.TotalAmount, loadedData.WeeklySummaries[i].TotalAmount)
+		}
+	}
+
+	// Verify trip template data
+	for i, template := range data.TripTemplates {
+		if loadedData.TripTemplates[i].Name != template.Name {
+			t.Errorf("Template %d: expected name %s, got %s", i, template.Name, loadedData.TripTemplates[i].Name)
+		}
+		if loadedData.TripTemplates[i].Origin != template.Origin {
+			t.Errorf("Template %d: expected origin %s, got %s", i, template.Origin, loadedData.TripTemplates[i].Origin)
+		}
+		if loadedData.TripTemplates[i].Destination != template.Destination {
+			t.Errorf("Template %d: expected destination %s, got %s", i, template.Destination, loadedData.TripTemplates[i].Destination)
+		}
+		if loadedData.TripTemplates[i].TripType != template.TripType {
+			t.Errorf("Template %d: expected trip type %s, got %s", i, template.TripType, loadedData.TripTemplates[i].TripType)
+		}
+		if loadedData.TripTemplates[i].Notes != template.Notes {
+			t.Errorf("Template %d: expected notes %s, got %s", i, template.Notes, loadedData.TripTemplates[i].Notes)
 		}
 	}
 

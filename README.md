@@ -2,6 +2,14 @@
 
 A terminal-based application for tracking mileage, expenses, and calculating reimbursements. While this was originally built to provide my nanny with weekly reumbusements, it can also be used for tracking expenses and mileage for anyone.
 
+## Technical Details
+
+- Built in Go using the Bubble Tea TUI framework
+- Uses Google Maps API for mileage calculations
+- JSON-based persistent storage
+- Environment-based configuration
+- Comprehensive test coverage
+
 ## Features
 
 - Track trips with date, origin, destination, and mileage
@@ -10,7 +18,7 @@ A terminal-based application for tracking mileage, expenses, and calculating rei
 - Support for recurring trips with weekly scheduling
 - Automatic mileage calculation using Google Maps API
 - Weekly summaries of mileage, expenses, and reimbursement amounts
-- **Search trips** by origin, destination, date, or type (Ctrl+F)
+- Search trips by origin, destination, date, or type (Ctrl+F)
 - Edit and delete trips with confirmation
 - Persistent storage of trip and expense data
 - Data validation for all entries
@@ -20,6 +28,7 @@ A terminal-based application for tracking mileage, expenses, and calculating rei
 - Terminal-based UI with keyboard navigation
 - Real-time search filtering
 - Weekly summaries with itemized trips and expenses
+- Manage reusable trip templates for common trips
 
 ## Data Structures
 
@@ -29,14 +38,7 @@ The application uses the following core data structures:
 - **RecurringTrip**: Represents a weekly recurring trip with start/end dates and weekday
 - **Expense**: Represents a reimbursable expense with date, amount, and description
 - **WeeklySummary**: Contains aggregated data for a week including total miles, reimbursement amount, and expenses
-
-## Technical Details
-
-- Built in Go using the Bubble Tea TUI framework
-- Uses Google Maps API for accurate mileage calculations
-- JSON-based persistent storage
-- Environment-based configuration
-- Comprehensive test coverage
+- **TripTemplate**: Represents a reusable template for trips, including name, origin, destination, type, and notes
 
 ## Installation
 
@@ -81,12 +83,14 @@ Run the application:
 ### Keyboard Controls
 
 - **Enter**: Confirm input or move to next field
-- **Ctrl+E**: Edit selected trip or expense
-- **Ctrl+D**: Delete selected trip or expense (requires confirmation)
+- **Ctrl+E**: Edit selected trip, expense, or template
+- **Ctrl+D**: Delete selected trip, expense, or template (requires confirmation)
 - **Ctrl+X**: Add new expense
 - **Ctrl+F**: Toggle search mode (filter trips)
-- **↑/↓**: Navigate through trips and expenses (selected item shown in color)
-- **Tab**: Switch between trips and expenses list
+- **Ctrl+T**: Create new trip template
+- **Ctrl+U**: Use selected template to create a new trip
+- **↑/↓**: Navigate through trips, expenses, or templates (selected item shown in color)
+- **Tab/Shift+Tab**: Switch between Weekly Summaries, Trips, Expenses, and Trip Templates tabs
 - **Ctrl+C**: Quit application
 
 ### Searching Trips
@@ -122,6 +126,31 @@ Run the application:
 3. Enter the expense amount
 4. Enter a description of the expense
 5. The expense will be added to the weekly summary for that date
+
+### Using Trip Templates
+
+#### Creating a Template
+1. Press **Ctrl+T** from the main screen (date mode)
+2. Enter a template name
+3. Enter the origin address
+4. Enter the destination address
+5. Enter the trip type (single or round)
+6. (Optional) Enter notes for the template
+7. The template will be saved for future use
+
+#### Navigating and Managing Templates
+1. Press **Tab** or **Shift+Tab** to switch to the Trip Templates tab
+2. Use **↑/↓** to select a template
+3. Press **Ctrl+E** to edit the selected template
+4. Press **Ctrl+D** to delete the selected template (confirmation required)
+
+#### Using Templates to Create Trips
+1. Press **Tab** or **Shift+Tab** to switch to the Trip Templates tab
+2. Use **↑/↓** to select the template you want to use
+3. Press **Ctrl+U** to create a new trip from the template
+4. Enter the date for the new trip
+5. The trip will be created with the template's origin, destination, and type
+6. The mileage will be automatically calculated based on the origin and destination
 
 ### Editing a Trip
 

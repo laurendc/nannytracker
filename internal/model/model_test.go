@@ -813,3 +813,107 @@ func TestAddingTrip(t *testing.T) {
 		t.Errorf("Expected type %v, got %v", trip.Type, data.Trips[0].Type)
 	}
 }
+
+func TestStorageDataTripTemplateOperations(t *testing.T) {
+	data := &StorageData{
+		Trips:         []Trip{},
+		Expenses:      []Expense{},
+		TripTemplates: []TripTemplate{},
+	}
+
+	// Test adding a valid template
+	template := TripTemplate{
+		Name:        "Work Commute",
+		Origin:      "123 Home St",
+		Destination: "456 Work Ave",
+		TripType:    "single",
+		Notes:       "Regular work commute",
+	}
+
+	// Test adding template to storage
+	if err := data.AddTripTemplate(template); err != nil {
+		t.Errorf("AddTripTemplate() error = %v", err)
+	}
+	if len(data.TripTemplates) != 1 {
+		t.Errorf("Expected 1 template, got %d", len(data.TripTemplates))
+	}
+
+	// Test editing template
+	editedTemplate := TripTemplate{
+		Name:        "Work Commute (Updated)",
+		Origin:      "123 Home St",
+		Destination: "456 Work Ave",
+		TripType:    "round",
+		Notes:       "Updated work commute",
+	}
+	if err := data.EditTripTemplate(0, editedTemplate); err != nil {
+		t.Errorf("EditTripTemplate() error = %v", err)
+	}
+	if data.TripTemplates[0].Name != editedTemplate.Name {
+		t.Errorf("Expected name %v, got %v", editedTemplate.Name, data.TripTemplates[0].Name)
+	}
+	if data.TripTemplates[0].TripType != editedTemplate.TripType {
+		t.Errorf("Expected type %v, got %v", editedTemplate.TripType, data.TripTemplates[0].TripType)
+	}
+
+	// Test deleting template
+	if err := data.DeleteTripTemplate(0); err != nil {
+		t.Errorf("DeleteTripTemplate() error = %v", err)
+	}
+	if len(data.TripTemplates) != 0 {
+		t.Errorf("Expected 0 templates after deletion, got %d", len(data.TripTemplates))
+	}
+
+	// Test invalid operations
+	if err := data.EditTripTemplate(0, editedTemplate); err == nil {
+		t.Error("Expected error for invalid index in EditTripTemplate")
+	}
+
+	if err := data.DeleteTripTemplate(0); err == nil {
+		t.Error("Expected error for invalid index in DeleteTripTemplate")
+	}
+}
+
+func TestTripTemplateSerialization(t *testing.T) {
+	originalTemplate := TripTemplate{
+		Name:        "Work Commute",
+		Origin:      "123 Home St",
+		Destination: "456 Work Ave",
+		TripType:    "round",
+		Notes:       "Regular work commute",
+	}
+
+	// Serialize to JSON
+	data, err := json.Marshal(originalTemplate)
+	if err != nil {
+		t.Fatalf("Failed to marshal template: %v", err)
+	}
+
+	// Deserialize back
+	var deserializedTemplate TripTemplate
+	if err := json.Unmarshal(data, &deserializedTemplate); err != nil {
+		t.Fatalf("Failed to unmarshal template: %v", err)
+	}
+
+	// Verify all fields were preserved
+	if deserializedTemplate.Name != originalTemplate.Name {
+		t.Errorf("Name not preserved during serialization. Got %s, want %s",
+			deserializedTemplate.Name, originalTemplate.Name)
+	}
+	if deserializedTemplate.Origin != originalTemplate.Origin {
+		t.Errorf("Origin not preserved during serialization. Got %s, want %s",
+			deserializedTemplate.Origin, originalTemplate.Origin)
+	}
+	if deserializedTemplate.Destination != originalTemplate.Destination {
+		t.Errorf("Destination not preserved during serialization. Got %s, want %s",
+			deserializedTemplate.Destination, originalTemplate.Destination)
+	}
+	if deserializedTemplate.TripType != originalTemplate.TripType {
+		t.Errorf("TripType not preserved during serialization. Got %s, want %s",
+			deserializedTemplate.TripType, originalTemplate.TripType)
+	}
+	if deserializedTemplate.Notes != originalTemplate.Notes {
+		t.Errorf("Notes not preserved during serialization. Got %s, want %s",
+			deserializedTemplate.Notes, originalTemplate.Notes)
+	}
+}

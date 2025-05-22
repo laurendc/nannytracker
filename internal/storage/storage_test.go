@@ -36,6 +36,22 @@ func TestStorage(t *testing.T) {
 				TotalAmount: 13.10,
 			},
 		},
+		TripTemplates: []model.TripTemplate{
+			{
+				Name:        "Home to Work",
+				Origin:      "Home",
+				Destination: "Work",
+				TripType:    "single",
+				Notes:       "Regular commute",
+			},
+			{
+				Name:        "Work to Home",
+				Origin:      "Work",
+				Destination: "Home",
+				TripType:    "single",
+				Notes:       "Return trip",
+			},
+		},
 	}
 
 	// Save the data
@@ -56,6 +72,10 @@ func TestStorage(t *testing.T) {
 
 	if len(loadedData.WeeklySummaries) != len(data.WeeklySummaries) {
 		t.Errorf("Expected %d weekly summaries, got %d", len(data.WeeklySummaries), len(loadedData.WeeklySummaries))
+	}
+
+	if len(loadedData.TripTemplates) != len(data.TripTemplates) {
+		t.Errorf("Expected %d trip templates, got %d", len(data.TripTemplates), len(loadedData.TripTemplates))
 	}
 
 	// Verify trip data
@@ -90,6 +110,25 @@ func TestStorage(t *testing.T) {
 		}
 	}
 
+	// Verify trip template data
+	for i, template := range data.TripTemplates {
+		if loadedData.TripTemplates[i].Name != template.Name {
+			t.Errorf("Template %d: expected name %s, got %s", i, template.Name, loadedData.TripTemplates[i].Name)
+		}
+		if loadedData.TripTemplates[i].Origin != template.Origin {
+			t.Errorf("Template %d: expected origin %s, got %s", i, template.Origin, loadedData.TripTemplates[i].Origin)
+		}
+		if loadedData.TripTemplates[i].Destination != template.Destination {
+			t.Errorf("Template %d: expected destination %s, got %s", i, template.Destination, loadedData.TripTemplates[i].Destination)
+		}
+		if loadedData.TripTemplates[i].TripType != template.TripType {
+			t.Errorf("Template %d: expected trip type %s, got %s", i, template.TripType, loadedData.TripTemplates[i].TripType)
+		}
+		if loadedData.TripTemplates[i].Notes != template.Notes {
+			t.Errorf("Template %d: expected notes %s, got %s", i, template.Notes, loadedData.TripTemplates[i].Notes)
+		}
+	}
+
 	// Test loading from non-existent file
 	os.Remove(filePath)
 	emptyData, err := store.LoadData()
@@ -101,5 +140,8 @@ func TestStorage(t *testing.T) {
 	}
 	if len(emptyData.WeeklySummaries) != 0 {
 		t.Errorf("Expected 0 weekly summaries from non-existent file, got %d", len(emptyData.WeeklySummaries))
+	}
+	if len(emptyData.TripTemplates) != 0 {
+		t.Errorf("Expected 0 trip templates from non-existent file, got %d", len(emptyData.TripTemplates))
 	}
 }

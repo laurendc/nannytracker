@@ -463,6 +463,7 @@ func TestEditTrip(t *testing.T) {
 
 	// Select the trip
 	uiModel.SelectedTrip = 0
+	uiModel.ActiveTab = TabTrips // Ensure we are on the Trips tab
 
 	// Enter edit mode
 	var updatedModel tea.Model
@@ -548,6 +549,9 @@ func TestDeleteTrip(t *testing.T) {
 
 	// Select the trip
 	uiModel.SelectedTrip = 0
+
+	// Set active tab to Trips (required for delete to work)
+	uiModel.ActiveTab = TabTrips
 
 	// Enter delete confirmation mode
 	var updatedModel tea.Model
@@ -880,8 +884,6 @@ func TestSearchFunctionality(t *testing.T) {
 		uiModel = updatedModel.(*Model)
 	}
 	view := uiModel.View()
-	fmt.Println("DEBUG VIEW OUTPUT AFTER EXITING SEARCH MODE AND GOING TO PAGE 4:")
-	fmt.Println(view)
 	expectedTrips := []string{
 		"2024-03-21: Work → Store (10.00 miles) [single]",
 		"2024-03-20: Home → Work (10.00 miles) [single]",
@@ -999,6 +1001,9 @@ func TestConvertTripToRecurring(t *testing.T) {
 	// Select the trip
 	uiModel.SelectedTrip = 0
 
+	// Set active tab to Trips (required for convert to recurring to work)
+	uiModel.ActiveTab = TabTrips
+
 	// Enter convert mode
 	var updatedModel tea.Model
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
@@ -1101,6 +1106,9 @@ func TestConvertTripToRecurringWithNoSelection(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()
 
+	// Set active tab to Trips (required for convert to recurring to work)
+	uiModel.ActiveTab = TabTrips
+
 	// Try to convert without selecting a trip
 	var updatedModel tea.Model
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
@@ -1139,6 +1147,12 @@ func TestTabNavigation(t *testing.T) {
 		t.Errorf("Expected tab to be Expenses (2) after Tab, got %d", uiModel.ActiveTab)
 	}
 
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabTemplates {
+		t.Errorf("Expected tab to be Templates (3) after Tab, got %d", uiModel.ActiveTab)
+	}
+
 	// Test wrap-around
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
 	uiModel = updatedModel.(*Model)
@@ -1149,8 +1163,27 @@ func TestTabNavigation(t *testing.T) {
 	// Test reverse tab navigation
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
 	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabTemplates {
+		t.Errorf("Expected tab to be Templates (3) after Shift+Tab, got %d", uiModel.ActiveTab)
+	}
+
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	uiModel = updatedModel.(*Model)
 	if uiModel.ActiveTab != TabExpenses {
 		t.Errorf("Expected tab to be Expenses (2) after Shift+Tab, got %d", uiModel.ActiveTab)
+	}
+
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabTrips {
+		t.Errorf("Expected tab to be Trips (1) after Shift+Tab, got %d", uiModel.ActiveTab)
+	}
+
+	// Test wrap-around in reverse
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabWeeklySummaries {
+		t.Errorf("Expected tab to wrap around to Weekly Summaries (0) in reverse, got %d", uiModel.ActiveTab)
 	}
 }
 
@@ -1549,5 +1582,441 @@ func TestWeeklySummarySorting(t *testing.T) {
 				t.Errorf("Expenses not in descending order: %s appears before %s", expected, prevExpense)
 			}
 		}
+	}
+}
+
+func TestTemplateCreation(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Enter template creation mode
+	msg := tea.KeyMsg{Type: tea.KeyCtrlT}
+	model, _ := uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_name" {
+		t.Errorf("Expected mode to be 'template_name', got '%s'", uiModel.Mode)
+	}
+
+	// Enter template name
+	uiModel.TextInput.SetValue("Work Commute")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_origin" {
+		t.Errorf("Expected mode to be 'template_origin', got '%s'", uiModel.Mode)
+	}
+
+	// Enter origin
+	uiModel.TextInput.SetValue("123 Home St")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_destination" {
+		t.Errorf("Expected mode to be 'template_destination', got '%s'", uiModel.Mode)
+	}
+
+	// Enter destination
+	uiModel.TextInput.SetValue("456 Work Ave")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_type" {
+		t.Errorf("Expected mode to be 'template_type', got '%s'", uiModel.Mode)
+	}
+
+	// Enter trip type
+	uiModel.TextInput.SetValue("round")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_notes" {
+		t.Errorf("Expected mode to be 'template_notes', got '%s'", uiModel.Mode)
+	}
+
+	// Enter notes
+	uiModel.TextInput.SetValue("Regular work commute")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify template was created
+	if len(uiModel.TripTemplates) != 1 {
+		t.Errorf("Expected 1 template, got %d", len(uiModel.TripTemplates))
+	}
+
+	template := uiModel.TripTemplates[0]
+	if template.Name != "Work Commute" {
+		t.Errorf("Expected name 'Work Commute', got '%s'", template.Name)
+	}
+	if template.Origin != "123 Home St" {
+		t.Errorf("Expected origin '123 Home St', got '%s'", template.Origin)
+	}
+	if template.Destination != "456 Work Ave" {
+		t.Errorf("Expected destination '456 Work Ave', got '%s'", template.Destination)
+	}
+	if template.TripType != "round" {
+		t.Errorf("Expected type 'round', got '%s'", template.TripType)
+	}
+	if template.Notes != "Regular work commute" {
+		t.Errorf("Expected notes 'Regular work commute', got '%s'", template.Notes)
+	}
+}
+
+func TestTemplateEditing(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a template first
+	template := model.TripTemplate{
+		Name:        "Work Commute",
+		Origin:      "123 Home St",
+		Destination: "456 Work Ave",
+		TripType:    "single",
+		Notes:       "Regular work commute",
+	}
+	uiModel.TripTemplates = append(uiModel.TripTemplates, template)
+	uiModel.Data.TripTemplates = uiModel.TripTemplates
+
+	// Select the template
+	uiModel.SelectedTemplate = 0
+
+	// Set active tab to Templates (required for edit to work)
+	uiModel.ActiveTab = TabTemplates
+
+	// Enter edit mode
+	msg := tea.KeyMsg{Type: tea.KeyCtrlE}
+	model, _ := uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_edit" {
+		t.Errorf("Expected mode to be 'template_edit', got '%s'", uiModel.Mode)
+	}
+
+	// Edit name
+	uiModel.TextInput.SetValue("Updated Work Commute")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Skip origin (keep existing)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Skip destination (keep existing)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Edit trip type
+	uiModel.TextInput.SetValue("round")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Skip notes (keep existing)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify template was updated
+	if len(uiModel.TripTemplates) != 1 {
+		t.Errorf("Expected 1 template, got %d", len(uiModel.TripTemplates))
+	}
+
+	updatedTemplate := uiModel.TripTemplates[0]
+	if updatedTemplate.Name != "Updated Work Commute" {
+		t.Errorf("Expected name 'Updated Work Commute', got '%s'", updatedTemplate.Name)
+	}
+	if updatedTemplate.Origin != "123 Home St" {
+		t.Errorf("Expected origin '123 Home St', got '%s'", updatedTemplate.Origin)
+	}
+	if updatedTemplate.Destination != "456 Work Ave" {
+		t.Errorf("Expected destination '456 Work Ave', got '%s'", updatedTemplate.Destination)
+	}
+	if updatedTemplate.TripType != "round" {
+		t.Errorf("Expected type 'round', got '%s'", updatedTemplate.TripType)
+	}
+	if updatedTemplate.Notes != "Regular work commute" {
+		t.Errorf("Expected notes 'Regular work commute', got '%s'", updatedTemplate.Notes)
+	}
+}
+
+func TestTemplateDeletion(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a template first
+	template := model.TripTemplate{
+		Name:        "Work Commute",
+		Origin:      "123 Home St",
+		Destination: "456 Work Ave",
+		TripType:    "single",
+		Notes:       "Regular work commute",
+	}
+	uiModel.TripTemplates = append(uiModel.TripTemplates, template)
+	uiModel.Data.TripTemplates = uiModel.TripTemplates
+
+	// Select the template
+	uiModel.SelectedTemplate = 0
+
+	// Set active tab to Templates (required for delete to work)
+	uiModel.ActiveTab = TabTemplates
+
+	// Enter delete confirmation mode
+	msg := tea.KeyMsg{Type: tea.KeyCtrlD}
+	model, _ := uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_delete_confirm" {
+		t.Errorf("Expected mode to be 'template_delete_confirm', got '%s'", uiModel.Mode)
+	}
+
+	// Test cancellation by entering something other than 'yes'
+	uiModel.TextInput.SetValue("no")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify template wasn't deleted and mode was reset
+	if len(uiModel.TripTemplates) != 1 {
+		t.Errorf("Expected 1 template after cancellation, got %d", len(uiModel.TripTemplates))
+	}
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date' after cancellation, got '%s'", uiModel.Mode)
+	}
+
+	// Enter delete confirmation mode again
+	msg = tea.KeyMsg{Type: tea.KeyCtrlD}
+	model, _ = uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	// Confirm deletion by entering 'yes'
+	uiModel.TextInput.SetValue("yes")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify template was deleted and mode was reset
+	if len(uiModel.TripTemplates) != 0 {
+		t.Errorf("Expected 0 templates after deletion, got %d", len(uiModel.TripTemplates))
+	}
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date' after deletion, got '%s'", uiModel.Mode)
+	}
+}
+
+func TestTabNavigationWithTemplates(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a test template
+	template := model.TripTemplate{
+		Name:        "Work Commute",
+		Origin:      "123 Home St",
+		Destination: "456 Work Ave",
+		TripType:    "single",
+		Notes:       "Regular work commute",
+	}
+	uiModel.TripTemplates = append(uiModel.TripTemplates, template)
+	uiModel.Data.TripTemplates = uiModel.TripTemplates
+
+	// Test initial tab state
+	if uiModel.ActiveTab != TabWeeklySummaries {
+		t.Errorf("Expected initial tab to be Weekly Summaries (0), got %d", uiModel.ActiveTab)
+	}
+
+	// Test forward tab navigation including Templates
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabTrips {
+		t.Errorf("Expected tab to be Trips (1) after Tab, got %d", uiModel.ActiveTab)
+	}
+
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabExpenses {
+		t.Errorf("Expected tab to be Expenses (2) after Tab, got %d", uiModel.ActiveTab)
+	}
+
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabTemplates {
+		t.Errorf("Expected tab to be Templates (3) after Tab, got %d", uiModel.ActiveTab)
+	}
+
+	// Test wrap-around
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabWeeklySummaries {
+		t.Errorf("Expected tab to wrap around to Weekly Summaries (0), got %d", uiModel.ActiveTab)
+	}
+
+	// Test reverse tab navigation including Templates
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabTemplates {
+		t.Errorf("Expected tab to be Templates (3) after Shift+Tab, got %d", uiModel.ActiveTab)
+	}
+
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabExpenses {
+		t.Errorf("Expected tab to be Expenses (2) after Shift+Tab, got %d", uiModel.ActiveTab)
+	}
+
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabTrips {
+		t.Errorf("Expected tab to be Trips (1) after Shift+Tab, got %d", uiModel.ActiveTab)
+	}
+
+	// Test wrap-around in reverse
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	uiModel = updatedModel.(*Model)
+	if uiModel.ActiveTab != TabWeeklySummaries {
+		t.Errorf("Expected tab to wrap around to Weekly Summaries (0) in reverse, got %d", uiModel.ActiveTab)
+	}
+}
+
+func TestTemplateTabContent(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add test templates
+	template1 := model.TripTemplate{
+		Name:        "Work Commute",
+		Origin:      "123 Home St",
+		Destination: "456 Work Ave",
+		TripType:    "single",
+		Notes:       "Regular work commute",
+	}
+	template2 := model.TripTemplate{
+		Name:        "Grocery Run",
+		Origin:      "123 Home St",
+		Destination: "789 Market St",
+		TripType:    "round",
+		Notes:       "Weekly grocery shopping",
+	}
+	uiModel.TripTemplates = append(uiModel.TripTemplates, template1, template2)
+	uiModel.Data.TripTemplates = uiModel.TripTemplates
+
+	// Set active tab to Templates
+	uiModel.ActiveTab = TabTemplates
+
+	// Test template selection
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTemplate != 0 {
+		t.Errorf("Expected selected template to be 0, got %d", uiModel.SelectedTemplate)
+	}
+
+	// Test moving selection down
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTemplate != 1 {
+		t.Errorf("Expected selected template to be 1, got %d", uiModel.SelectedTemplate)
+	}
+
+	// Test moving selection up
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = updatedModel.(*Model)
+	if uiModel.SelectedTemplate != 0 {
+		t.Errorf("Expected selected template to be 0, got %d", uiModel.SelectedTemplate)
+	}
+
+	// Test template content display
+	view := uiModel.View()
+	expectedContent := []string{
+		"Work Commute: 123 Home St → 456 Work Ave [single] - Regular work commute",
+		"Grocery Run: 123 Home St → 789 Market St [round] - Weekly grocery shopping",
+	}
+	for _, content := range expectedContent {
+		if !strings.Contains(view, content) {
+			t.Errorf("View does not contain expected template content: %s", content)
+		}
+	}
+}
+
+func TestTemplateToTripConversion(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a test template
+	template := model.TripTemplate{
+		Name:        "Work Commute",
+		Origin:      "123 Home St",
+		Destination: "456 Work Ave",
+		TripType:    "single",
+		Notes:       "Regular work commute",
+	}
+	uiModel.TripTemplates = append(uiModel.TripTemplates, template)
+	uiModel.Data.TripTemplates = uiModel.TripTemplates
+
+	// Select the template
+	uiModel.SelectedTemplate = 0
+
+	// Set active tab to Templates (required for template-to-trip conversion)
+	uiModel.ActiveTab = TabTemplates
+
+	// Trigger template-to-trip conversion with Ctrl+U
+	msg := tea.KeyMsg{Type: tea.KeyCtrlU}
+	model, _ := uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	// Verify we switched to Trips tab
+	if uiModel.ActiveTab != TabTrips {
+		t.Errorf("Expected active tab to be Trips, got %d", uiModel.ActiveTab)
+	}
+
+	// Verify we're in date input mode
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date', got '%s'", uiModel.Mode)
+	}
+
+	// Verify the current trip has template data
+	if uiModel.CurrentTrip.Origin != template.Origin {
+		t.Errorf("Expected origin to be '%s', got '%s'", template.Origin, uiModel.CurrentTrip.Origin)
+	}
+	if uiModel.CurrentTrip.Destination != template.Destination {
+		t.Errorf("Expected destination to be '%s', got '%s'", template.Destination, uiModel.CurrentTrip.Destination)
+	}
+	if uiModel.CurrentTrip.Type != template.TripType {
+		t.Errorf("Expected type to be '%s', got '%s'", template.TripType, uiModel.CurrentTrip.Type)
+	}
+	if uiModel.CurrentTrip.Miles != 0 {
+		t.Errorf("Expected initial miles to be 0, got %.2f", uiModel.CurrentTrip.Miles)
+	}
+
+	// Enter date
+	uiModel.TextInput.SetValue("2024-03-20")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Enter origin (accept pre-filled value)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Enter destination (accept pre-filled value)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Enter type (accept pre-filled value)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify the trip was created with calculated miles
+	if len(uiModel.Trips) != 1 {
+		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
+	}
+
+	trip := uiModel.Trips[0]
+	if trip.Date != "2024-03-20" {
+		t.Errorf("Expected date to be '2024-03-20', got '%s'", trip.Date)
+	}
+	if trip.Origin != template.Origin {
+		t.Errorf("Expected origin to be '%s', got '%s'", template.Origin, trip.Origin)
+	}
+	if trip.Destination != template.Destination {
+		t.Errorf("Expected destination to be '%s', got '%s'", template.Destination, trip.Destination)
+	}
+	if trip.Type != template.TripType {
+		t.Errorf("Expected type to be '%s', got '%s'", template.TripType, trip.Type)
+	}
+	if trip.Miles != 10.0 { // Mock client returns 10.0 miles
+		t.Errorf("Expected miles to be 10.0, got %.2f", trip.Miles)
 	}
 }
