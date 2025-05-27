@@ -278,9 +278,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				}
 				if m.SelectedTrip >= 0 && m.SelectedTrip < len(m.Trips) {
-					m.Trips[m.SelectedTrip] = m.CurrentTrip
-					m.Data.Trips = m.Trips
-					if err := m.Storage.SaveData(m.Data); err != nil {
+					if err := m.EditTrip(m.SelectedTrip, m.CurrentTrip); err != nil {
 						m.Err = fmt.Errorf("failed to save trip: %w", err)
 						return m, cmd
 					}
@@ -1388,4 +1386,29 @@ func (m *Model) getCurrentWeekIndex() int {
 		}
 	}
 	return 0 // fallback to most recent week
+}
+
+// EditTrip updates a trip at the specified index
+func (m *Model) EditTrip(index int, trip model.Trip) error {
+	if index < 0 || index >= len(m.Trips) {
+		return fmt.Errorf("invalid trip index: %d", index)
+	}
+
+	// Update the trip in the data
+	if err := m.Data.EditTrip(index, trip); err != nil {
+		return err
+	}
+
+	// Update the trip in the UI model
+	m.Trips[index] = trip
+
+	// Recalculate weekly summaries
+	model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
+
+	// Save the updated data
+	if err := m.Storage.SaveData(m.Data); err != nil {
+		return err
+	}
+
+	return nil
 }

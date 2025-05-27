@@ -2051,3 +2051,83 @@ func TestTemplateToTripConversion(t *testing.T) {
 		t.Errorf("Expected miles to be 10.0, got %.2f", trip.Miles)
 	}
 }
+
+func TestWeeklySummaryUpdatesOnTripEdit(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add initial trip
+	initialTrip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.0,
+		Type:        "single",
+	}
+	uiModel.AddTrip(initialTrip)
+
+	// Verify initial weekly summary
+	if len(uiModel.Data.WeeklySummaries) != 1 {
+		t.Fatalf("Expected 1 weekly summary, got %d", len(uiModel.Data.WeeklySummaries))
+	}
+	initialSummary := uiModel.Data.WeeklySummaries[0]
+	if initialSummary.TotalMiles != 10.0 {
+		t.Errorf("Expected initial total miles to be 10.0, got %.2f", initialSummary.TotalMiles)
+	}
+
+	// Edit the trip
+	editedTrip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       15.0, // Changed from 10.0 to 15.0
+		Type:        "single",
+	}
+
+	// Select the trip first
+	uiModel.SelectedTrip = 0
+	uiModel.ActiveTab = TabTrips
+
+	// Enter edit mode
+	msg := tea.KeyMsg{Type: tea.KeyCtrlE}
+	model, _ := uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	// Update trip details
+	uiModel.CurrentTrip = editedTrip
+	uiModel.TextInput.SetValue(editedTrip.Date)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	uiModel.TextInput.SetValue(editedTrip.Origin)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	uiModel.TextInput.SetValue(editedTrip.Destination)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	uiModel.TextInput.SetValue(editedTrip.Type)
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify the trip was updated
+	if len(uiModel.Trips) != 1 {
+		t.Errorf("Expected 1 trip, got %d", len(uiModel.Trips))
+	}
+	if uiModel.Trips[0].Miles != 15.0 {
+		t.Errorf("Expected trip miles to be 15.0, got %.2f", uiModel.Trips[0].Miles)
+	}
+
+	// Verify weekly summary was updated
+	if len(uiModel.Data.WeeklySummaries) != 1 {
+		t.Errorf("Expected 1 weekly summary, got %d", len(uiModel.Data.WeeklySummaries))
+	}
+	updatedSummary := uiModel.Data.WeeklySummaries[0]
+	if updatedSummary.TotalMiles != 15.0 {
+		t.Errorf("Expected updated total miles to be 15.0, got %.2f", updatedSummary.TotalMiles)
+	}
+	if updatedSummary.TotalAmount != 15.0*uiModel.RatePerMile {
+		t.Errorf("Expected updated total amount to be %.2f, got %.2f", 15.0*uiModel.RatePerMile, updatedSummary.TotalAmount)
+	}
+}
