@@ -52,7 +52,7 @@ jobs:
 
   merge-to-main:
     needs: build-and-test
-    if: startsWith(github.ref, 'refs/heads/feature/')
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/heads/main') && contains(github.actor, 'laurendc')
     runs-on: ubuntu-latest
     permissions:
       contents: write
