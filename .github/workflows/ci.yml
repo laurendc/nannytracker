@@ -1,10 +1,9 @@
 name: Go CI
 
 on:
-  push:
-    branches: [ main, feature/*, bug/*, chore/*, docs/*, fix/*]
   pull_request:
-    branches: [ main, feature/*, bug/*, chore/*, docs/*, fix/*]
+    types: [opened, synchronize, reopened]
+    branches: [ main ]
 
 jobs:
   build-and-test:
@@ -17,7 +16,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.22'  # Updated to a valid version
+          go-version: '1.22'
 
       - name: Cache Go modules
         uses: actions/cache@v3
@@ -49,32 +48,3 @@ jobs:
             echo "Code is not formatted correctly. Please run 'go fmt ./...'"
             exit 1
           fi
-
-  merge-to-main:
-    needs: build-and-test
-    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/heads/main') && contains(github.actor, 'laurendc')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Configure Git
-        run: |
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'github-actions@github.com'
-
-      - name: Merge to main
-        run: |
-          git checkout main
-          git pull origin main
-          if ! git merge --no-ff --log ${{ github.ref_name }} -m "Merge feature branch: ${{ github.ref_name }}"; then
-            echo "Merge failed"
-            exit 1
-          fi
-          git push origin main
