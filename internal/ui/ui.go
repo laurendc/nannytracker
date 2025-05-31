@@ -559,14 +559,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.TextInput.Reset()
 				m.Mode = "origin"
 				m.TextInput.Placeholder = "Enter origin location..."
+				m.Mode = "activity_type"
+				m.TextInput.Placeholder = "Enter activity type (playdate/extracurricular/other)..."
+				return m, cmd
 			} else if m.Mode == "type" {
-				if m.TextInput.Value() == "" && m.EditIndex >= 0 {
-					// Keep existing value if no new input
-					tripType := m.CurrentTrip.Type
-					if tripType != "single" && tripType != "round" {
-						m.Err = fmt.Errorf("invalid trip type: %s. Must be 'single' or 'round'", tripType)
-						return m, cmd
-					}
+				if m.TextInput.Value() != "" {
+						activityType := strings.ToLower(m.TextInput.Value())
+						if activityType != "playdate" && activityType != "extracurricular" && activityType != "other" {
+								m.Err = fmt.Errorf("invalid activity type: %s. Must be 'playdate', 'extracurricular', or 'other'", activityType)
+								return m, cmd
+    }
+    m.CurrentTrip.ActivityType = activityType
+}
 				} else {
 					tripType := strings.ToLower(m.TextInput.Value())
 					if tripType != "single" && tripType != "round" {
@@ -1142,6 +1146,23 @@ func (m *Model) View() string {
 				summary.TotalMiles,
 				summary.TotalAmount,
 				summary.TotalExpenses)).String())
+		// Add weekly value
+		playdates := 0
+		extracurriculars := 0
+		others := 0
+		for _, trip := range summary.Trips {
+			switch trip.ActivityType {
+			case "playdate":
+				playdates++
+			case "extracurricular":
+				extracurriculars++
+			case "other":
+				others++
+			}
+		}
+		s.WriteString(normalStyle.SetString(fmt.Sprintf(
+			"    Trips by Type:\n      Playdates: %d\n      Extracurriculars: %d\n      Other: %d\n",
+			playdates, extracurriculars, others)))
 
 			// Display itemized trips sorted by date (most recent first)
 			if len(summary.Trips) > 0 {
