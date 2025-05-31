@@ -1,0 +1,48 @@
+name: Security Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly on Sunday at midnight
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  security:
+    name: Deep Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.0'
+          check-latest: true
+
+      - name: Run comprehensive gosec scan
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          # Run with all checks enabled for a deeper scan
+          gosec -severity medium -confidence medium ./...
+
+      - name: Run dependency audit
+        run: |
+          # Install and run nancy for dependency auditing
+          go install github.com/sonatype-nexus-community/nancy@latest
+          go list -json -m all | nancy sleuth
+
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@v3.34.0
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Run dependency graph analysis
+        run: |
+          go install github.com/loov/goda@latest
+          goda graph ./... > deps.dot
+          # Optional: Convert to SVG if needed
+          # dot -Tsvg deps.dot > deps.svg 

@@ -1,0 +1,33 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1024']  # Prevent files larger than 1MB
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: detect-private-key
+      - id: check-case-conflict
+
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-vet
+      - id: go-imports
+      - id: go-unit-tests
+      - id: go-build
+      - id: go-mod-tidy
+      - id: go-errcheck
+      - id: golangci-lint
+        args: [--timeout=5m]
+        additional_dependencies:
+          - golang.org/x/tools/cmd/goimports@latest
+          - github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          - github.com/kisielk/errcheck@latest
+          - github.com/go-critic/go-critic/cmd/gocritic@latest
+          - github.com/mgechev/revive@latest 

@@ -3,10 +3,13 @@ name: Go CI
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [ main ]
+    branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   build-and-test:
+    name: Build and Test
     runs-on: ubuntu-latest
 
     steps:
@@ -16,7 +19,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.22'
+          go-version: '1.23.0'
+          check-latest: true
 
       - name: Cache Go modules
         uses: actions/cache@v3
@@ -29,18 +33,28 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Run tests
-        run: go test ./... -v
-
-      - name: Run linter
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-          golangci-lint run ./...
+      - name: Verify dependencies
+        run: go mod verify
 
       - name: Run security checks
         run: |
+          # Install security tools
           go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec ./...
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          
+          # Run gosec with high severity and confidence
+          echo "Running gosec security checks..."
+          gosec -severity high -confidence high ./...
+          
+          # Check for vulnerable dependencies
+          echo "Checking for vulnerable dependencies..."
+          govulncheck ./...
+
+      - name: Run tests
+        run: go test -race -v ./...
+
+      - name: Build
+        run: go build -v ./...
 
       - name: Check formatting
         run: |
