@@ -42,20 +42,29 @@ The application uses the following core data structures:
 
 ## Installation
 
-1. Clone the repository:
+1. Ensure you have Go (version 1.23.0 or later) installed.
+2. Clone the repository:
 ```bash
 git clone https://github.com/lauren/nannytracker.git
 cd nannytracker
 ```
-
-2. Install dependencies:
+3. Install dependencies:
 ```bash
 go mod download
 ```
-
-3. Build the application:
+4. (Recommended) Install pre-commit to enable automatic code checks:
+```bash
+pip install pre-commit  # or see https://pre-commit.com for other install methods
+pre-commit install
+```
+5. (Optional) Create a `.env` file (with your Google Maps API key) and a `config.json` file to customize settings as described below.
+6. Build the application:
 ```bash
 go build
+```
+7. Run tests:
+```bash
+go test ./...
 ```
 
 ## Configuration
@@ -199,15 +208,11 @@ Run the application:
 
 ## Development
 
-### Running Tests
+### Contributing
 
-All tests have been updated to match the latest UI and logic. To run the full suite:
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on getting started. Make sure your branch is up to date, all tests and pre-commit checks pass.
 
-```bash
-go test ./...
-```
-
-### Project Structure
+## Project Structure
 
 ```
 .
@@ -227,9 +232,12 @@ go test ./...
 - github.com/joho/godotenv - Environment configuration
 - Google Maps API - Mileage calculations
 
+### License
+
+Nanny Tracker is licensed under the GNU General Public License (GPL) (see [LICENSE](LICENSE)). By contributing, you agree that your contribution is also licensed under the GPL.
+
 ## Future Enhancements
 
 - Add export functionality for reimbursement reports
-- Add monthly summaries
 - Add date range filtering for trips
 - Add data backup functionality
