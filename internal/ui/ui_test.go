@@ -2051,3 +2051,69 @@ func TestTemplateToTripConversion(t *testing.T) {
 		t.Errorf("Expected miles to be 10.0, got %.2f", trip.Miles)
 	}
 }
+
+func TestTemplateSorting(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add test templates in unsorted order
+	templates := []model.TripTemplate{
+		{
+			Name:        "Zebra Trip",
+			Origin:      "123 Home St",
+			Destination: "456 Work Ave",
+			TripType:    "single",
+			Notes:       "Last alphabetically",
+		},
+		{
+			Name:        "apple trip",
+			Origin:      "123 Home St",
+			Destination: "789 Market St",
+			TripType:    "round",
+			Notes:       "First alphabetically (case-insensitive)",
+		},
+		{
+			Name:        "Banana Trip",
+			Origin:      "123 Home St",
+			Destination: "101 Park Ave",
+			TripType:    "single",
+			Notes:       "Middle alphabetically",
+		},
+	}
+	uiModel.TripTemplates = templates
+	uiModel.Data.TripTemplates = templates
+
+	// Set active tab to Templates
+	uiModel.ActiveTab = TabTemplates
+
+	// Get the view
+	view := uiModel.View()
+
+	// Verify templates are displayed in alphabetical order
+	expectedOrder := []string{
+		"apple trip: 123 Home St → 789 Market St [round] - First alphabetically (case-insensitive)",
+		"Banana Trip: 123 Home St → 101 Park Ave [single] - Middle alphabetically",
+		"Zebra Trip: 123 Home St → 456 Work Ave [single] - Last alphabetically",
+	}
+
+	// Find the template section in the view
+	templateSection := strings.Split(view, "Trip Templates:")[1]
+	templateSection = strings.Split(templateSection, "Controls:")[0]
+
+	// Verify each template appears in the correct order
+	for i, expected := range expectedOrder {
+		if !strings.Contains(templateSection, expected) {
+			t.Errorf("Expected template '%s' not found in view", expected)
+		}
+		if i > 0 {
+			// Verify order by checking that each template appears after the previous one
+			prevTemplate := expectedOrder[i-1]
+			prevIndex := strings.Index(templateSection, prevTemplate)
+			currIndex := strings.Index(templateSection, expected)
+			if prevIndex > currIndex {
+				t.Errorf("Template '%s' appears before '%s' in view, but should be after",
+					prevTemplate, expected)
+			}
+		}
+	}
+}
