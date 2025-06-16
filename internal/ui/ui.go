@@ -1296,21 +1296,42 @@ func (m *Model) View() string {
 		// Show templates with pagination
 		if len(m.TripTemplates) > 0 {
 			s.WriteString(headerStyle.Render("Trip Templates:") + "\n")
+
+			// Create a copy of templates for sorting
+			displayTemplates := make([]model.TripTemplate, len(m.TripTemplates))
+			copy(displayTemplates, m.TripTemplates)
+
+			// Sort templates alphabetically by name (case-insensitive)
+			sort.Slice(displayTemplates, func(i, j int) bool {
+				return strings.ToLower(displayTemplates[i].Name) < strings.ToLower(displayTemplates[j].Name)
+			})
+
 			startIdx := m.CurrentPage * m.PageSize
 			endIdx := startIdx + m.PageSize
-			if endIdx > len(m.TripTemplates) {
-				endIdx = len(m.TripTemplates)
+			if endIdx > len(displayTemplates) {
+				endIdx = len(displayTemplates)
 			}
 
+			// Display sorted templates
 			for i := startIdx; i < endIdx; i++ {
-				template := m.TripTemplates[i]
+				template := displayTemplates[i]
 				templateLine := fmt.Sprintf("%s: %s → %s [%s]",
 					template.Name, template.Origin, template.Destination, template.TripType)
 				if template.Notes != "" {
 					templateLine += fmt.Sprintf(" - %s", template.Notes)
 				}
 
-				if m.SelectedTemplate == i {
+				// Find the original index in m.TripTemplates for selection highlighting
+				originalIndex := -1
+				for j, t := range m.TripTemplates {
+					if t.Name == template.Name && t.Origin == template.Origin &&
+						t.Destination == template.Destination && t.TripType == template.TripType {
+						originalIndex = j
+						break
+					}
+				}
+
+				if m.SelectedTemplate == originalIndex {
 					templateLine = selectedStyle.Render("* " + templateLine)
 				} else {
 					templateLine = normalStyle.Render("  " + templateLine)
