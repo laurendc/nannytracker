@@ -249,6 +249,26 @@ func TestWeeklySummaryDisplay(t *testing.T) {
 
 	// Check the most recent week (default selected)
 	view := uiModel.View()
+
+	// Verify the extra newline between Trips and Expenses sections
+	tripsSection := " Trips:"
+	expensesSection := "\n Expenses:"
+	tripsIndex := strings.Index(view, tripsSection)
+	expensesIndex := strings.Index(view, expensesSection)
+	if tripsIndex == -1 || expensesIndex == -1 {
+		t.Fatalf("Could not find Trips or Expenses sections in view.\nView output:\n%s", view)
+	}
+	expensesIndex += 1 // skip the leading '\n' for correct slicing
+	tripsSectionEnd := tripsIndex + len(tripsSection)
+	if tripsSectionEnd > expensesIndex {
+		t.Fatalf("Trips section end (%d) is after Expenses section start (%d).\nFull view output:\n%s", tripsSectionEnd, expensesIndex, view)
+	}
+	gapSubstring := view[tripsSectionEnd:expensesIndex]
+	newlineCount := strings.Count(gapSubstring, "\n")
+	if newlineCount < 2 {
+		t.Errorf("Expected at least 2 newlines between Trips and Expenses sections, got %d", newlineCount)
+	}
+
 	expectedSummaries := []string{
 		"Week of 2024-03-24 to 2024-03-30 (Week 1 of 2):",
 		"    Total Miles:          70.00",
@@ -2115,5 +2135,74 @@ func TestTemplateSorting(t *testing.T) {
 					prevTemplate, expected)
 			}
 		}
+	}
+}
+
+func TestWeeklySummaryUpdateAfterTripEdit(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a trip
+	trip := model.Trip{
+		Date:        "2024-03-20",
+		Origin:      "Home",
+		Destination: "Work",
+		Miles:       10.0,
+		Type:        "round",
+	}
+	uiModel.AddTrip(trip)
+
+	// Switch to Trips tab
+	uiModel.ActiveTab = TabTrips
+	uiModel.SelectedTrip = 0
+
+	// Enter edit mode
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	uiModel = updatedModel.(*Model)
+
+	// Follow the edit sequence
+	// 1. Edit date (keep existing)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// 2. Edit origin (keep existing)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// 3. Edit destination (keep existing)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// 4. Edit trip type
+	uiModel.TextInput.SetValue("single")
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = updatedModel.(*Model)
+
+	// Switch back to Weekly Summaries tab
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyTab})
+	uiModel = updatedModel.(*Model)
+
+	// Ensure SelectedWeek is valid
+	uiModel.SelectedWeek = 0
+	// Ensure the correct tab is active
+	uiModel.ActiveTab = TabWeeklySummaries
+
+	// Verify the weekly summary shows the updated trip type
+	view := uiModel.View()
+	expectedTrip := "2024-03-20: Home → Work (10.00 miles) [single]"
+	if !strings.Contains(view, expectedTrip) {
+		t.Errorf("Weekly summary does not show updated trip type. Expected to find: %s", expectedTrip)
+		t.Logf("View output:\n%s", view)
+		t.Logf("WeeklySummaries: %+v", uiModel.Data.WeeklySummaries)
+		t.Logf("SelectedWeek: %d, WeeklySummariesLen: %d", uiModel.SelectedWeek, len(uiModel.Data.WeeklySummaries))
+	}
+
+	// Verify the total miles are updated (should be 10 instead of 20 for single trip)
+	expectedMiles := "Total Miles:          10.00"
+	if !strings.Contains(view, expectedMiles) {
+		t.Errorf("Weekly summary does not show updated total miles. Expected to find: %s", expectedMiles)
+		t.Logf("View output:\n%s", view)
+		t.Logf("WeeklySummaries: %+v", uiModel.Data.WeeklySummaries)
+		t.Logf("SelectedWeek: %d, WeeklySummariesLen: %d", uiModel.SelectedWeek, len(uiModel.Data.WeeklySummaries))
 	}
 }

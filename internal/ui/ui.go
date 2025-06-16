@@ -280,6 +280,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.SelectedTrip >= 0 && m.SelectedTrip < len(m.Trips) {
 					m.Trips[m.SelectedTrip] = m.CurrentTrip
 					m.Data.Trips = m.Trips
+					model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
 					if err := m.Storage.SaveData(m.Data); err != nil {
 						m.Err = fmt.Errorf("failed to save trip: %w", err)
 						return m, cmd
@@ -966,11 +967,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ActiveTab = TabTemplates
 			case TabTemplates:
 				m.ActiveTab = TabWeeklySummaries
+				// Refresh weekly summaries when switching to Weekly Summaries tab
+				model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
 			}
 			// Reset selections when changing tabs
 			m.CurrentPage = 0
 			if m.ActiveTab == TabWeeklySummaries {
-				m.SelectedWeek = m.getCurrentWeekIndex() // Show week containing today
+				if len(m.Data.WeeklySummaries) > 0 && (m.SelectedWeek < 0 || m.SelectedWeek >= len(m.Data.WeeklySummaries)) {
+					m.SelectedWeek = 0
+				} else if len(m.Data.WeeklySummaries) == 0 {
+					m.SelectedWeek = -1
+				}
 			} else {
 				m.SelectedWeek = -1
 			}
@@ -989,6 +996,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ActiveTab = TabTrips
 			case TabTrips:
 				m.ActiveTab = TabWeeklySummaries
+				// Refresh weekly summaries when switching to Weekly Summaries tab
+				model.CalculateAndUpdateWeeklySummaries(m.Data, m.RatePerMile)
 			}
 			// Reset selections when changing tabs
 			m.CurrentPage = 0
@@ -1129,54 +1138,32 @@ func (m *Model) View() string {
 	// Show content based on active tab
 	switch m.ActiveTab {
 	case TabWeeklySummaries:
-		if len(m.Data.WeeklySummaries) > 0 {
-			// Show only the selected week
-			if m.SelectedWeek < 0 || m.SelectedWeek >= len(m.Data.WeeklySummaries) {
-				m.SelectedWeek = 0
-			}
+		if m.SelectedWeek >= 0 && m.SelectedWeek < len(m.Data.WeeklySummaries) {
 			summary := m.Data.WeeklySummaries[m.SelectedWeek]
-			s.WriteString(fmt.Sprintf("Week of %s to %s (Week %d of %d):\n", summary.WeekStart, summary.WeekEnd, m.SelectedWeek+1, len(m.Data.WeeklySummaries)))
-			s.WriteString(normalStyle.SetString(fmt.Sprintf("    Total Miles:          %.2f\n"+
-				"    Total Mileage Amount: $%.2f\n"+
-				"    Total Expenses:       $%.2f\n",
-				summary.TotalMiles,
-				summary.TotalAmount,
-				summary.TotalExpenses)).String())
-
-			// Display itemized trips sorted by date (most recent first)
-			if len(summary.Trips) > 0 {
-				s.WriteString("\n    Trips:\n")
-				// Sort trips by date in descending order
-				sort.Slice(summary.Trips, func(i, j int) bool {
-					return summary.Trips[i].Date > summary.Trips[j].Date
-				})
-				for _, trip := range summary.Trips {
-					displayMiles := trip.Miles
-					if trip.Type == "round" {
-						displayMiles *= 2
-					}
-					tripLine := fmt.Sprintf("      %s: %s → %s (%.2f miles) [%s]",
-						trip.Date, trip.Origin, trip.Destination, displayMiles, trip.Type)
-					s.WriteString(normalStyle.Render(tripLine) + "\n")
+			s.WriteString(headerStyle.Render(fmt.Sprintf("Week of %s to %s (Week %d of %d):", summary.WeekStart, summary.WeekEnd, m.SelectedWeek+1, len(m.Data.WeeklySummaries))) + "\n")
+			s.WriteString(normalStyle.Render(fmt.Sprintf("    Total Miles:          %.2f", summary.TotalMiles)) + "\n")
+			s.WriteString(normalStyle.Render(fmt.Sprintf("    Total Mileage Amount: $%.2f", summary.TotalAmount)) + "\n")
+			s.WriteString(normalStyle.Render(fmt.Sprintf("    Total Expenses:       $%.2f", summary.TotalExpenses)) + "\n")
+			s.WriteString(normalStyle.Render(" Trips:") + "\n")
+			for _, trip := range summary.Trips {
+				displayMiles := trip.Miles
+				if trip.Type == "round" {
+					displayMiles *= 2
 				}
-			}
-
-			// Display itemized expenses sorted by date (most recent first)
-			if len(summary.Expenses) > 0 {
-				s.WriteString("\n    Expenses:\n")
-				// Sort expenses by date in descending order
-				sort.Slice(summary.Expenses, func(i, j int) bool {
-					return summary.Expenses[i].Date > summary.Expenses[j].Date
-				})
-				for _, expense := range summary.Expenses {
-					expenseLine := fmt.Sprintf("      %s: $%.2f - %s",
-						expense.Date, expense.Amount, expense.Description)
-					s.WriteString(normalStyle.Render(expenseLine) + "\n")
-				}
+				tripLine := fmt.Sprintf(" %s: %s → %s (%.2f miles) [%s]", trip.Date, trip.Origin, trip.Destination, displayMiles, trip.Type)
+				s.WriteString(normalStyle.Render(tripLine) + "\n")
 			}
 			s.WriteString("\n")
+			s.WriteString(normalStyle.Render(" Expenses:") + "\n")
+			if len(summary.Expenses) > 0 {
+				for _, exp := range summary.Expenses {
+					s.WriteString(normalStyle.Render(fmt.Sprintf(" %s: $%.2f - %s", exp.Date, exp.Amount, exp.Description)) + "\n")
+				}
+			} else {
+				s.WriteString(normalStyle.Render(" (No expenses available.)") + "\n")
+			}
 		} else {
-			s.WriteString(normalStyle.Render("No weekly summaries available.\n\n"))
+			s.WriteString(normalStyle.Render(" (No weekly summary available.)") + "\n")
 		}
 
 	case TabTrips:
