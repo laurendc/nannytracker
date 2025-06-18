@@ -7,10 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/joho/godotenv"
-	"github.com/lauren/nannytracker/internal/maps"
-	"github.com/lauren/nannytracker/internal/storage"
-	"github.com/lauren/nannytracker/internal/ui"
-	"github.com/lauren/nannytracker/pkg/config"
+	tui "github.com/laurendc/nannytracker/internal/tui"
+	"github.com/laurendc/nannytracker/pkg/config"
+	"github.com/laurendc/nannytracker/pkg/core/maps"
+	"github.com/laurendc/nannytracker/pkg/core/storage"
 )
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 	}
 
 	// Initialize UI with Google Maps client
-	model, err := ui.NewWithClient(store, cfg.RatePerMile, mapsClient)
+	model, err := tui.NewWithClient(store, cfg.RatePerMile, mapsClient)
 	if err != nil {
 		log.Fatalf("Failed to initialize UI: %v", err)
 	}
