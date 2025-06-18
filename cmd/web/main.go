@@ -33,10 +33,13 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status":  "healthy",
 		"service": "nannytracker-api",
-	})
+	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) handleTrips(w http.ResponseWriter, r *http.Request) {
@@ -68,10 +71,13 @@ func (s *Server) getTrips(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"trips": data.Trips,
 		"count": len(data.Trips),
-	})
+	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) createTrip(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +110,10 @@ func (s *Server) createTrip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(trip)
+	if err := json.NewEncoder(w).Encode(trip); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) handleExpenses(w http.ResponseWriter, r *http.Request) {
@@ -136,10 +145,13 @@ func (s *Server) getExpenses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"expenses": data.Expenses,
 		"count":    len(data.Expenses),
-	})
+	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) createExpense(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +184,10 @@ func (s *Server) createExpense(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(expense)
+	if err := json.NewEncoder(w).Encode(expense); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) handleWeeklySummaries(w http.ResponseWriter, r *http.Request) {
@@ -193,10 +208,13 @@ func (s *Server) handleWeeklySummaries(w http.ResponseWriter, r *http.Request) {
 	// Calculate weekly summaries
 	summaries := core.CalculateWeeklySummaries(data.Trips, data.Expenses, s.cfg.RatePerMile)
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"summaries": summaries,
 		"count":     len(summaries),
-	})
+	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func main() {
