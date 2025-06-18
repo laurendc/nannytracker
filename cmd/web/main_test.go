@@ -325,7 +325,10 @@ func TestWeeklySummariesWithData(t *testing.T) {
 	defer cleanup()
 
 	// Add some test data
-	data, _ := server.store.LoadData()
+	data, err := server.store.LoadData()
+	if err != nil {
+		t.Fatalf("Failed to load data: %v", err)
+	}
 
 	// Add a trip
 	trip := core.Trip{
@@ -345,7 +348,9 @@ func TestWeeklySummariesWithData(t *testing.T) {
 	}
 	data.Expenses = append(data.Expenses, expense)
 
-	server.store.SaveData(data)
+	if err := server.store.SaveData(data); err != nil {
+		t.Fatalf("Failed to save data: %v", err)
+	}
 
 	// Test GET /api/summaries (with data)
 	req := httptest.NewRequest(http.MethodGet, "/api/summaries", nil)
@@ -361,14 +366,27 @@ func TestWeeklySummariesWithData(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	summaries := response["summaries"].([]interface{})
+	summariesInterface, ok := response["summaries"]
+	if !ok {
+		t.Fatal("Expected 'summaries' key in response")
+	}
+
+	summaries, ok := summariesInterface.([]interface{})
+	if !ok {
+		t.Fatal("Expected summaries to be an array")
+	}
+
 	if len(summaries) == 0 {
 		t.Error("Expected at least one weekly summary")
 	}
 
 	// Check that the summary contains the expected data
-	summary := summaries[0].(map[string]interface{})
-	if summary["TotalMiles"] == nil {
+	summaryInterface, ok := summaries[0].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected summary to be a map")
+	}
+
+	if summaryInterface["TotalMiles"] == nil {
 		t.Error("Expected TotalMiles in summary")
 	}
 }
@@ -406,11 +424,11 @@ func TestServerCreation(t *testing.T) {
 
 	server := NewServer(cfg)
 	if server == nil {
-		t.Error("Expected server to be created")
+		t.Fatal("Expected server to be created")
 	}
 
 	if server.store == nil {
-		t.Error("Expected storage to be initialized")
+		t.Fatal("Expected storage to be initialized")
 	}
 
 	if server.cfg != cfg {
@@ -453,7 +471,11 @@ func BenchmarkTripsEndpoint(b *testing.B) {
 	defer cleanup()
 
 	// Add some test data
-	data, _ := server.store.LoadData()
+	data, err := server.store.LoadData()
+	if err != nil {
+		b.Fatalf("Failed to load data: %v", err)
+	}
+
 	for i := 0; i < 100; i++ {
 		trip := core.Trip{
 			Date:        fmt.Sprintf("2024-12-%02d", i%30+1),
@@ -464,7 +486,10 @@ func BenchmarkTripsEndpoint(b *testing.B) {
 		}
 		data.Trips = append(data.Trips, trip)
 	}
-	server.store.SaveData(data)
+
+	if err := server.store.SaveData(data); err != nil {
+		b.Fatalf("Failed to save data: %v", err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
