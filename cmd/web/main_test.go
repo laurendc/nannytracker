@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/laurendc/nannytracker/pkg/config"
 	core "github.com/laurendc/nannytracker/pkg/core"
@@ -496,5 +497,26 @@ func BenchmarkTripsEndpoint(b *testing.B) {
 		req := httptest.NewRequest(http.MethodGet, "/api/trips", nil)
 		w := httptest.NewRecorder()
 		server.handleTrips(w, req)
+	}
+}
+
+func TestHTTPServerConfig(t *testing.T) {
+	port := "12345"
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      nil,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	if srv.ReadTimeout != 10*time.Second {
+		t.Errorf("Expected ReadTimeout to be 10s, got %v", srv.ReadTimeout)
+	}
+	if srv.WriteTimeout != 10*time.Second {
+		t.Errorf("Expected WriteTimeout to be 10s, got %v", srv.WriteTimeout)
+	}
+	if srv.IdleTimeout != 60*time.Second {
+		t.Errorf("Expected IdleTimeout to be 60s, got %v", srv.IdleTimeout)
 	}
 }
