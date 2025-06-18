@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/laurendc/nannytracker/pkg/core/maps"
 	model "github.com/laurendc/nannytracker/pkg/core"
+	"github.com/laurendc/nannytracker/pkg/core/maps"
 	"github.com/laurendc/nannytracker/pkg/core/storage"
 )
 

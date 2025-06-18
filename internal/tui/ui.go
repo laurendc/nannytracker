@@ -11,8 +11,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/laurendc/nannytracker/pkg/core/maps"
 	model "github.com/laurendc/nannytracker/pkg/core"
+	"github.com/laurendc/nannytracker/pkg/core/maps"
 	"github.com/laurendc/nannytracker/pkg/core/storage"
 )
 
