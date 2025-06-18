@@ -44,7 +44,7 @@ The application uses the following core data structures:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/lauren/nannytracker.git
+git clone https://github.com/laurendc/nannytracker.git
 cd nannytracker
 ```
 
@@ -55,7 +55,7 @@ go mod download
 
 3. Build the application:
 ```bash
-go build
+go build -o nannytracker ./cmd/tui
 ```
 
 ## Configuration
@@ -211,14 +211,16 @@ go test ./...
 
 ```
 .
+├── cmd/
+│   └── tui/
+│       └── main.go      # TUI application entry point
 ├── internal/
-│   ├── model/      # Core data structures and business logic
-│   ├── ui/         # Terminal UI components
-│   ├── storage/    # Data persistence
-│   └── maps/       # Google Maps integration
-├── pkg/            # Public packages
-├── main.go         # Application entry point
-└── main_test.go    # Integration tests
+│   ├── tui/             # Terminal UI components
+│   ├── storage/         # Data persistence
+│   └── maps/            # Google Maps integration
+├── pkg/                 # Public packages (core logic, etc.)
+├── web/                 # Web frontend (future)
+└── README.md            # Documentation
 ```
 
 ### Dependencies
