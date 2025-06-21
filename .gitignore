@@ -28,6 +28,9 @@ go/
 # env file
 .env
 
+# Project documentation
+PROJECT_STATUS.md
+
 # Dependencies
 node_modules/
 npm-debug.log*
