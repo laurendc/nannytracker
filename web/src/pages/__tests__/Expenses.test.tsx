@@ -154,7 +154,7 @@ describe('Expenses', () => {
 
     // Submit form - use the submit button specifically by type
     const submitButtons = screen.getAllByRole('button', { name: /add expense/i })
-    const submitButton = submitButtons.find(btn => btn.type === 'submit') || submitButtons[0]
+    const submitButton = submitButtons.find(btn => (btn as HTMLButtonElement).type === 'submit') || submitButtons[0]
     await user.click(submitButton)
 
     // Form should be submitted
@@ -254,7 +254,7 @@ describe('Expenses', () => {
 
     // Try to submit without filling required fields
     const submitButtons = screen.getAllByRole('button', { name: /add expense/i })
-    const submitButton = submitButtons.find(btn => btn.type === 'submit') || submitButtons[0]
+    const submitButton = submitButtons.find(btn => (btn as HTMLButtonElement).type === 'submit') || submitButtons[0]
     await user.click(submitButton)
 
     // Form should still be visible (not submitted)
@@ -291,7 +291,7 @@ describe('Expenses', () => {
 
     // Submit form
     const submitButtons = screen.getAllByRole('button', { name: /add expense/i })
-    const submitButton = submitButtons.find(btn => btn.type === 'submit') || submitButtons[0]
+    const submitButton = submitButtons.find(btn => (btn as HTMLButtonElement).type === 'submit') || submitButtons[0]
     await user.click(submitButton)
 
     // Form should still be visible (not submitted)

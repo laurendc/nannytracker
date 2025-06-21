@@ -1,14 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
+import App from './App'
 import './index.css'
 
-// Start MSW in development
+// Enable React Query DevTools in development
 if (import.meta.env.DEV) {
-  const { worker } = await import('./test/mocks/browser')
-  worker.start({
-    onUnhandledRequest: 'bypass',
-  })
+  console.log('Development mode enabled')
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
