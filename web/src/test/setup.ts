@@ -2,11 +2,17 @@ import '@testing-library/jest-dom'
 import { server } from './mocks/server'
 
 // Mock ResizeObserver for Recharts
-global.ResizeObserver = jest.fn().mockImplementation(() => ({
+declare global {
+  interface Window {
+    ResizeObserver: typeof ResizeObserver
+  }
+}
+
+window.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
-}))
+})) as any
 
 // Establish API mocking before all tests
 beforeAll(() => server.listen())
