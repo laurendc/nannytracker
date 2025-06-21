@@ -10,11 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
+      pull-requests: read
+      actions: read
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -36,13 +37,18 @@ jobs:
             
             # Delete branch if it's older than 7 days and has no open PRs
             if [ $DAYS_SINCE_LAST_COMMIT -gt 7 ]; then
-              # Check if branch has open PRs
-              PR_COUNT=$(gh pr list --search "head:$branch" --json number --jq length)
-              if [ $PR_COUNT -eq 0 ]; then
-                echo "Deleting stale branch: $branch"
+              # Check if branch has open PRs using GitHub API
+              PR_COUNT=$(curl -s -H "Authorization: token ${{ github.token }}" \
+                "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&head=${{ github.repository_owner }}:$branch" | \
+                jq length)
+              
+              if [ "$PR_COUNT" = "0" ]; then
+                echo "Deleting stale branch: $branch (last commit: $DAYS_SINCE_LAST_COMMIT days ago)"
                 git push origin --delete $branch
               else
-                echo "Skipping branch $branch - has open PRs"
+                echo "Skipping branch $branch - has $PR_COUNT open PR(s)"
               fi
+            else
+              echo "Skipping branch $branch - only $DAYS_SINCE_LAST_COMMIT days old"
             fi
           done 
