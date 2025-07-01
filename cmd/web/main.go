@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/laurendc/nannytracker/pkg/config"
 	core "github.com/laurendc/nannytracker/pkg/core"
 	"github.com/laurendc/nannytracker/pkg/core/storage"
@@ -219,10 +218,8 @@ func (s *Server) handleWeeklySummaries(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: Error loading .env file: %v", err)
-	}
+	// Load .env file from project root
+	config.LoadEnv()
 
 	// Load configuration
 	cfg, err := config.New()

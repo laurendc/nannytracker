@@ -6,7 +6,6 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/joho/godotenv"
 	tui "github.com/laurendc/nannytracker/internal/tui"
 	"github.com/laurendc/nannytracker/pkg/config"
 	"github.com/laurendc/nannytracker/pkg/core/maps"
@@ -14,10 +13,8 @@ import (
 )
 
 func main() {
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: Error loading .env file: %v", err)
-	}
+	// Load .env file from project root
+	config.LoadEnv()
 
 	// Load configuration
 	cfg, err := config.New()
