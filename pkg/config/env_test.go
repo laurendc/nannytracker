@@ -6,6 +6,25 @@ import (
 	"testing"
 )
 
+// changeDirAndRestore changes to the specified directory and returns a function
+// that restores the original directory. It handles errors properly for linting.
+func changeDirAndRestore(t *testing.T, newDir string) func() {
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current working directory: %v", err)
+	}
+
+	if err := os.Chdir(newDir); err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
+
+	return func() {
+		if err := os.Chdir(originalWd); err != nil {
+			t.Errorf("Failed to restore original directory: %v", err)
+		}
+	}
+}
+
 func TestLoadEnv(t *testing.T) {
 	// Create a temporary directory structure
 	tempDir, err := os.MkdirTemp("", "nannytracker-env-test")
@@ -39,16 +58,9 @@ func TestLoadEnv(t *testing.T) {
 		t.Fatalf("Failed to create subdirectory: %v", err)
 	}
 
-	// Change to subdirectory
-	originalWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory: %v", err)
-	}
-	defer os.Chdir(originalWd)
-
-	if err := os.Chdir(subDir); err != nil {
-		t.Fatalf("Failed to change directory: %v", err)
-	}
+	// Change to subdirectory and restore on cleanup
+	restore := changeDirAndRestore(t, subDir)
+	defer restore()
 
 	// Clear any existing environment variables
 	os.Unsetenv("TEST_VAR")
@@ -75,16 +87,9 @@ func TestLoadEnvNoProjectRoot(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Change to temp directory
-	originalWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory: %v", err)
-	}
-	defer os.Chdir(originalWd)
-
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatalf("Failed to change directory: %v", err)
-	}
+	// Change to temp directory and restore on cleanup
+	restore := changeDirAndRestore(t, tempDir)
+	defer restore()
 
 	// Clear any existing environment variables
 	os.Unsetenv("TEST_VAR")
@@ -122,16 +127,9 @@ func TestFindProjectRoot(t *testing.T) {
 		t.Fatalf("Failed to create subdirectory: %v", err)
 	}
 
-	// Change to subdirectory
-	originalWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory: %v", err)
-	}
-	defer os.Chdir(originalWd)
-
-	if err := os.Chdir(subDir); err != nil {
-		t.Fatalf("Failed to change directory: %v", err)
-	}
+	// Change to subdirectory and restore on cleanup
+	restore := changeDirAndRestore(t, subDir)
+	defer restore()
 
 	// Test findProjectRoot
 	root, err := findProjectRoot()
@@ -152,16 +150,9 @@ func TestFindProjectRootNotFound(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Change to temp directory
-	originalWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current working directory: %v", err)
-	}
-	defer os.Chdir(originalWd)
-
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatalf("Failed to change directory: %v", err)
-	}
+	// Change to temp directory and restore on cleanup
+	restore := changeDirAndRestore(t, tempDir)
+	defer restore()
 
 	// Test findProjectRoot - should return an error
 	_, err = findProjectRoot()
