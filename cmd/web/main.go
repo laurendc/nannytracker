@@ -2,16 +2,17 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/laurendc/nannytracker/pkg/config"
 	core "github.com/laurendc/nannytracker/pkg/core"
 	"github.com/laurendc/nannytracker/pkg/core/storage"
+	"github.com/laurendc/nannytracker/pkg/version"
 )
 
 type Server struct {
@@ -38,6 +39,19 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"status":  "healthy",
 		"service": "nannytracker-api",
 	}); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(version.Get()); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
@@ -219,10 +233,20 @@ func (s *Server) handleWeeklySummaries(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: Error loading .env file: %v", err)
+	// Parse command line flags
+	var showVersion bool
+	flag.BoolVar(&showVersion, "version", false, "Show version information")
+	flag.BoolVar(&showVersion, "v", false, "Show version information")
+	flag.Parse()
+
+	// Show version if requested
+	if showVersion {
+		fmt.Println(version.FullString())
+		os.Exit(0)
 	}
+
+	// Load .env file from project root
+	config.LoadEnv()
 
 	// Load configuration
 	cfg, err := config.New()
@@ -235,6 +259,7 @@ func main() {
 
 	// Set up routes
 	http.HandleFunc("/health", server.handleHealth)
+	http.HandleFunc("/version", server.handleVersion)
 	http.HandleFunc("/api/trips", server.handleTrips)
 	http.HandleFunc("/api/expenses", server.handleExpenses)
 	http.HandleFunc("/api/summaries", server.handleWeeklySummaries)
@@ -248,6 +273,7 @@ func main() {
 	log.Printf("Starting NannyTracker API server on port %s", port)
 	log.Printf("API endpoints:")
 	log.Printf("  GET  /health")
+	log.Printf("  GET  /version")
 	log.Printf("  GET  /api/trips")
 	log.Printf("  POST /api/trips")
 	log.Printf("  GET  /api/expenses")

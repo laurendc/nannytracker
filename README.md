@@ -1,237 +1,339 @@
 # Nanny Tracker
 
-A terminal-based application for tracking mileage, expenses, and calculating reimbursements. While this was originally built to provide my nanny with weekly reumbusements, it can also be used for tracking expenses and mileage for anyone.
+A comprehensive application for tracking mileage, expenses, and calculating reimbursements. Originally built to provide nannies with weekly reimbursements, it can be used by anyone who needs to track expenses and mileage for work purposes.
 
-## Technical Details
+## Current Status
 
-- Built in Go using the Bubble Tea TUI framework
-- Uses Google Maps API for mileage calculations
-- JSON-based persistent storage
-- Environment-based configuration
-- Comprehensive test coverage
+**Terminal Application**: ✅ **Production Ready** - A fully functional terminal-based application with a rich TUI interface.
+
+**Web Application**: 🚧 **In Development** - A modern React-based web interface is currently being developed alongside the terminal application.
 
 ## Features
 
-- Track trips with date, origin, destination, and mileage
-- Track reimbursable expenses with date, amount, and description
-- Support for single and round trips
-- Support for recurring trips with weekly scheduling
-- Automatic mileage calculation using Google Maps API
-- Weekly summaries of mileage, expenses, and reimbursement amounts
-- Search trips by origin, destination, date, or type (Ctrl+F)
-- Edit and delete trips with confirmation
-- Persistent storage of trip and expense data
-- Data validation for all entries
-- Automatic trip generation from recurring trips
-- Support for custom mileage reimbursement rates
-- Configurable data storage location
-- Terminal-based UI with keyboard navigation
-- Real-time search filtering
-- Weekly summaries with itemized trips and expenses
-- Manage reusable trip templates for common trips
+### Terminal Application (Production Ready)
+- **Rich TUI Interface**: Terminal-based user interface with keyboard navigation
+- **Trip Management**: Track trips with date, origin, destination, and automatic mileage calculation
+- **Expense Tracking**: Record reimbursable expenses with date, amount, and description
+- **Trip Templates**: Create reusable templates for common trips
+- **Recurring Trips**: Set up weekly recurring trips with automatic generation
+- **Weekly Summaries**: View detailed weekly reports with itemized trips and expenses
+- **Search & Filter**: Real-time search through trips and expenses
+- **Data Validation**: Comprehensive validation for all entries
+- **Persistent Storage**: JSON-based data storage with backup capabilities
 
-## Data Structures
+### Web Application (In Development)
+- **Modern React Interface**: Built with React 18, TypeScript, and Tailwind CSS
+- **Responsive Design**: Mobile-first approach with beautiful UI
+- **Real-time Data**: React Query for efficient data fetching and caching
+- **Dashboard**: Overview of trips, expenses, and weekly summaries
+- **Interactive Charts**: Data visualization with Recharts
+- **API Integration**: RESTful API backend for programmatic access
 
-The application uses the following core data structures:
+## Technical Architecture
 
-- **Trip**: Represents a single trip with origin, destination, mileage, date, and type (single/round)
-- **RecurringTrip**: Represents a weekly recurring trip with start/end dates and weekday
-- **Expense**: Represents a reimbursable expense with date, amount, and description
-- **WeeklySummary**: Contains aggregated data for a week including total miles, reimbursement amount, and expenses
-- **TripTemplate**: Represents a reusable template for trips, including name, origin, destination, type, and notes
+### Backend (Go)
+- **Core Logic**: Shared business logic between TUI and web applications
+- **REST API**: HTTP server providing JSON endpoints for web frontend
+- **File Storage**: JSON-based persistent storage with data validation
+- **Configuration**: Environment-based configuration with `.env` support
+- **Cross-platform**: Supports Linux, macOS, and Windows
+
+### Frontend (React/TypeScript)
+- **Modern Stack**: React 18, TypeScript, Vite, Tailwind CSS
+- **State Management**: React Query for server state, React state for local state
+- **Testing**: Comprehensive test suite with Jest and React Testing Library
+- **Development**: Hot reload, linting, and type checking
 
 ## Installation
 
+### Option 1: Download Pre-built Binary (Recommended)
+
+1. Visit the [releases page](https://github.com/laurendc/nannytracker/releases)
+2. Download the appropriate binary for your platform:
+   - **Linux**: `nannytracker-linux-amd64` or `nannytracker-linux-arm64`
+   - **macOS**: `nannytracker-darwin-amd64` or `nannytracker-darwin-arm64`
+   - **Windows**: `nannytracker-windows-amd64.exe`
+
+3. Make the binary executable (Linux/macOS):
+   ```bash
+   chmod +x nannytracker-linux-amd64
+   ```
+
+4. Run the application:
+   ```bash
+   # Terminal application
+   ./nannytracker-linux-amd64
+   
+   # Web server
+   ./nannytracker-web-linux-amd64
+   ```
+
+### Option 2: Build from Source
+
 1. Clone the repository:
-```bash
-git clone https://github.com/laurendc/nannytracker.git
-cd nannytracker
-```
+   ```bash
+   git clone https://github.com/laurendc/nannytracker.git
+   cd nannytracker
+   ```
 
 2. Install dependencies:
-```bash
-go mod download
-```
+   ```bash
+   # Go dependencies
+   go mod download
+   
+   # Web frontend dependencies (optional)
+   cd web && npm install
+   ```
 
-3. Build the application:
-```bash
-go build -o nannytracker ./cmd/tui
-```
+3. Build the applications:
+   ```bash
+   # Build terminal application
+   go build -o nannytracker ./cmd/tui
+   
+   # Build web server
+   go build -o nannytracker-web ./cmd/web
+   
+   # Or use the Makefile
+   make build
+   ```
 
 ## Configuration
 
 1. Create a `.env` file in the project root with your Google Maps API key:
-```
-GOOGLE_MAPS_API_KEY=your_api_key_here
-```
+   ```
+   GOOGLE_MAPS_API_KEY=your_api_key_here
+   ```
 
 2. (Optional) Create a `config.json` file to customize settings:
-```json
-{
-  "rate_per_mile": 0.70,
-  "data_path": "~/.nannytracker"
-}
-```
+   ```json
+   {
+     "rate_per_mile": 0.70,
+     "data_path": "~/.nannytracker"
+   }
+   ```
 
 ## Usage
 
-Run the application:
+### Terminal Application
+
 ```bash
+# Run the TUI application
 ./nannytracker
+
+# Check version information
+./nannytracker --version
 ```
 
-### Keyboard Controls
-
+**Keyboard Controls:**
 - **Enter**: Confirm input or move to next field
-- **Ctrl+E**: Edit selected trip, expense, or template
-- **Ctrl+D**: Delete selected trip, expense, or template (requires confirmation)
+- **Ctrl+E**: Edit selected item
+- **Ctrl+D**: Delete selected item (requires confirmation)
 - **Ctrl+X**: Add new expense
-- **Ctrl+F**: Toggle search mode (filter trips)
+- **Ctrl+F**: Toggle search mode
 - **Ctrl+T**: Create new trip template
 - **Ctrl+U**: Use selected template to create a new trip
-- **↑/↓**: Navigate through trips, expenses, or templates (selected item shown in color)
-- **Tab/Shift+Tab**: Switch between Weekly Summaries, Trips, Expenses, and Trip Templates tabs
+- **↑/↓**: Navigate through items
+- **Tab/Shift+Tab**: Switch between tabs
 - **Ctrl+C**: Quit application
 
-### Searching Trips
+### Web Application
 
-- Press **Ctrl+F** to enter search mode
-- Type a search term (origin, destination, date, or type)
-- The trip list will be filtered in real time
-- Press **Ctrl+F** again to exit search mode and return to the full list
+```bash
+# Start the web server
+./nannytracker-web
 
-### Adding a Trip
+# Check version information
+./nannytracker-web --version
+```
 
-1. Enter the date (YYYY-MM-DD)
-2. Enter the origin address
-3. Enter the destination address
-4. Select trip type (single or round)
-5. The mileage will be automatically calculated (doubled for round trips)
+**Access the Web Interface:**
+1. Start the web server: `./nannytracker-web`
+2. Open your browser to `http://localhost:8080`
+3. The web interface will be available at the root URL
 
-### Adding a Recurring Trip
+**For Development:**
+```bash
+# Start the React development server
+cd web && npm run dev
 
-1. Press Ctrl+R to enter recurring trip mode
-2. Enter the start date (YYYY-MM-DD)
-3. Enter the weekday (0-6, where 0 is Sunday)
-4. Enter the origin address
-5. Enter the destination address
-6. Select trip type (single or round)
-7. The mileage will be automatically calculated (doubled for round trips)
-8. Trips will be generated for each occurrence of the weekday until the end of the current month
+# Build for production
+cd web && npm run build
+```
 
-### Adding an Expense
+### Web API
 
-1. Press Ctrl+X to enter expense mode
-2. Enter the date (YYYY-MM-DD)
-3. Enter the expense amount
-4. Enter a description of the expense
-5. The expense will be added to the weekly summary for that date
+The web server provides a REST API for programmatic access:
 
-### Using Trip Templates
+```bash
+# Health check
+curl http://localhost:8080/health
 
-#### Creating a Template
-1. Press **Ctrl+T** from the main screen (date mode)
-2. Enter a template name
-3. Enter the origin address
-4. Enter the destination address
-5. Enter the trip type (single or round)
-6. (Optional) Enter notes for the template
-7. The template will be saved for future use
+# Version information
+curl http://localhost:8080/version
 
-#### Navigating and Managing Templates
-1. Press **Tab** or **Shift+Tab** to switch to the Trip Templates tab
-2. Use **↑/↓** to select a template
-3. Press **Ctrl+E** to edit the selected template
-4. Press **Ctrl+D** to delete the selected template (confirmation required)
+# Get trips
+curl http://localhost:8080/api/trips
 
-#### Using Templates to Create Trips
-1. Press **Tab** or **Shift+Tab** to switch to the Trip Templates tab
-2. Use **↑/↓** to select the template you want to use
-3. Press **Ctrl+U** to create a new trip from the template
-4. Enter the date for the new trip
-5. The trip will be created with the template's origin, destination, and type
-6. The mileage will be automatically calculated based on the origin and destination
+# Get expenses
+curl http://localhost:8080/api/expenses
 
-### Editing a Trip
-
-1. Select the trip using ↑/↓ keys
-2. Press Ctrl+E to enter edit mode
-3. Update the fields you want to change:
-   - Press Enter without typing to keep the existing value
-   - Type a new value and press Enter to update the field
-4. The mileage will be automatically recalculated if origin or destination changes
-
-### Editing an Expense
-
-1. Select the expense using ↑/↓ keys (use Tab to switch between trips and expenses)
-2. Press Ctrl+E to enter edit mode
-3. Update the fields you want to change:
-   - Press Enter without typing to keep the existing value
-   - Type a new value and press Enter to update the field
-
-### Deleting a Trip
-
-1. Select the trip using ↑/↓ keys
-2. Press Ctrl+D to enter delete confirmation mode
-3. Type 'yes' and press Enter to confirm deletion
-4. Type anything else and press Enter to cancel
-
-### Deleting an Expense
-
-1. Select the expense using ↑/↓ keys (use Tab to switch between trips and expenses)
-2. Press Ctrl+D to enter delete confirmation mode
-3. Type 'yes' and press Enter to confirm deletion
-4. Type anything else and press Enter to cancel
-
-## Weekly Summaries
-
-- Weekly summaries are always displayed at the top of the UI
-- Each summary shows total miles, mileage amount, and expenses for the week
-- Formatting and alignment have been improved for clarity
-
-## Recurring Trips
-
-- Recurring trips are displayed in a separate section above the regular trips
-- Each recurring trip shows the origin, destination, mileage, type, and weekday
-- Generated trips from recurring trips appear in the regular trips list
-- Recurring trips automatically generate new trips until the end of the current month
-- Converting a trip to recurring will remove the original trip and create a new recurring trip
+# Get weekly summaries
+curl http://localhost:8080/api/summaries
+```
 
 ## Development
 
-### Running Tests
-
-All tests have been updated to match the latest UI and logic. To run the full suite:
+### Quick Start
 
 ```bash
-go test ./...
+# Clone the repository
+git clone https://github.com/laurendc/nannytracker.git
+cd nannytracker
+
+# Install development dependencies
+make deps
+
+# Run tests
+make test
+
+# Build for current platform
+make build
+
+# Build for all platforms
+make build-all
+
+# Run linter
+make lint
+
+# Format code
+make fmt
 ```
+
+### Running Tests
+
+```bash
+# Run all Go tests
+make test
+
+# Run tests with race detection
+make test-race
+
+# Run tests with coverage
+make test-coverage
+
+# Run web frontend tests
+cd web && npm test
+```
+
+### Release Management
+
+NannyTracker uses a comprehensive release management system with automated builds and versioning.
+
+#### Creating a Release
+
+```bash
+# Create a new release (requires VERSION=)
+make release VERSION=v1.0.0
+```
+
+This will:
+1. Run all tests
+2. Build binaries for all platforms
+3. Create a git tag
+4. Trigger GitHub Actions to create a release
+
+#### Version Information
+
+```bash
+# Check version from command line
+./nannytracker --version
+
+# Check version via API
+curl http://localhost:8080/version
+```
+
+For detailed release management information, see [docs/RELEASE_MANAGEMENT.md](docs/RELEASE_MANAGEMENT.md).
 
 ### Project Structure
 
 ```
 .
 ├── cmd/
-│   └── tui/
-│       └── main.go      # TUI application entry point
+│   ├── tui/
+│   │   └── main.go      # Terminal application entry point
+│   └── web/
+│       └── main.go      # Web API server entry point
 ├── internal/
-│   ├── tui/             # Terminal UI components
-│   ├── storage/         # Data persistence
-│   └── maps/            # Google Maps integration
-├── pkg/                 # Public packages (core logic, etc.)
-├── web/                 # Web frontend (future)
-└── README.md            # Documentation
+│   └── tui/             # Terminal UI components
+├── pkg/
+│   ├── config/          # Configuration management
+│   ├── core/            # Core business logic
+│   └── version/         # Version management
+├── web/                 # React web frontend
+│   ├── src/
+│   │   ├── components/  # React components
+│   │   ├── pages/       # Page components
+│   │   ├── lib/         # Utilities and API client
+│   │   └── types/       # TypeScript types
+│   ├── package.json     # Frontend dependencies
+│   └── README.md        # Frontend documentation
+├── docs/                # Documentation
+├── Makefile             # Development tasks
+├── CHANGELOG.md         # Release history
+└── README.md            # This file
 ```
 
 ### Dependencies
 
+**Backend (Go):**
 - github.com/charmbracelet/bubbletea - Terminal UI framework
 - github.com/joho/godotenv - Environment configuration
 - Google Maps API - Mileage calculations
 
-## Future Enhancements
+**Frontend (React):**
+- React 18 with TypeScript
+- Vite for development and building
+- React Router for navigation
+- React Query for server state management
+- Tailwind CSS for styling
+- Recharts for data visualization
 
+### Development Workflow
+
+1. **Make changes** in a feature branch
+2. **Run tests** to ensure everything works
+3. **Update CHANGELOG.md** with your changes
+4. **Create a release** when ready
+5. **Monitor feedback** and iterate
+
+## Version History
+
+See [CHANGELOG.md](CHANGELOG.md) for a complete history of changes and releases.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+## Roadmap
+
+### Short Term
+- Complete web frontend development
 - Add export functionality for reimbursement reports
 - Add monthly summaries
 - Add date range filtering for trips
-- Add data backup functionality
+
+### Long Term
+- Mobile-friendly web interface
+- Cloud synchronization
+- Multi-user support
+- Data backup functionality
+- Advanced reporting and analytics

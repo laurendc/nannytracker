@@ -1,23 +1,34 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/joho/godotenv"
 	tui "github.com/laurendc/nannytracker/internal/tui"
 	"github.com/laurendc/nannytracker/pkg/config"
 	"github.com/laurendc/nannytracker/pkg/core/maps"
 	"github.com/laurendc/nannytracker/pkg/core/storage"
+	"github.com/laurendc/nannytracker/pkg/version"
 )
 
 func main() {
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: Error loading .env file: %v", err)
+	// Parse command line flags
+	var showVersion bool
+	flag.BoolVar(&showVersion, "version", false, "Show version information")
+	flag.BoolVar(&showVersion, "v", false, "Show version information")
+	flag.Parse()
+
+	// Show version if requested
+	if showVersion {
+		fmt.Println(version.FullString())
+		os.Exit(0)
 	}
+
+	// Load .env file from project root
+	config.LoadEnv()
 
 	// Load configuration
 	cfg, err := config.New()
