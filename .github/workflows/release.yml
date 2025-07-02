@@ -31,7 +31,7 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Run tests
+      - name: Run all tests
         run: make test
 
       - name: Build all platform binaries
@@ -70,6 +70,10 @@ jobs:
         run: |
           echo "🔍 Starting automated release verification..."
           echo "Version: ${{ steps.version.outputs.VERSION }}"
+          
+          # Wait a bit for release artifacts to be available
+          echo "⏳ Waiting 30 seconds for release artifacts to be available..."
+          sleep 30
           
           # Make script executable and run verification
           chmod +x scripts/verify-release.sh

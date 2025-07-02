@@ -52,19 +52,29 @@ cd "$TEMP_DIR"
 
 echo -e "${YELLOW}📥 Downloading release artifacts...${NC}"
 
-# Function to download a file
+# Function to download a file with retries
 download_file() {
     local file=$1
     local url="https://github.com/${REPO}/releases/download/${VERSION}/${file}"
+    local max_retries=3
+    local retry_count=0
     
-    echo -n "  Downloading ${file}... "
-    if curl -L -s -o "$file" "$url"; then
-        echo -e "${GREEN}✓${NC}"
-        return 0
-    else
-        echo -e "${RED}✗${NC}"
-        return 1
-    fi
+    while [ $retry_count -lt $max_retries ]; do
+        echo -n "  Downloading ${file} (attempt $((retry_count + 1))/${max_retries})... "
+        if curl -L -s -o "$file" "$url"; then
+            echo -e "${GREEN}✓${NC}"
+            return 0
+        else
+            echo -e "${YELLOW}✗ (retrying in 5s)${NC}"
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+                sleep 5
+            fi
+        fi
+    done
+    
+    echo -e "${RED}✗ (failed after ${max_retries} attempts)${NC}"
+    return 1
 }
 
 # Function to verify binary
