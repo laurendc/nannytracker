@@ -426,8 +426,10 @@ func TestServerCreation(t *testing.T) {
 	server := NewServer(cfg)
 	if server == nil {
 		t.Fatal("Expected server to be created")
+		return
 	}
 
+	// Verify server components are properly initialized
 	if server.store == nil {
 		t.Fatal("Expected storage to be initialized")
 	}
