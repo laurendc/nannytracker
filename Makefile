@@ -9,7 +9,7 @@ BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 GIT_COMMIT := $(shell git rev-parse --short HEAD)
 
 # Platform definitions - DRY principle
-PLATFORMS := linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64
+PLATFORMS := linux-amd64 linux-arm64 darwin-amd64 darwin-arm64
 BINARY_NAMES := nannytracker nannytracker-web
 
 # Build flags
@@ -59,9 +59,9 @@ build-all:
 	@mkdir -p dist
 	@for platform in $(PLATFORMS); do \
 		GOOS=$${platform%-*} GOARCH=$${platform#*-} go build -ldflags="$(LDFLAGS)" \
-			-o dist/nannytracker-$$platform$$(if [ "$${platform#*-}" = "amd64" ] && [ "$${platform%-*}" = "windows" ]; then echo .exe; fi) ./cmd/tui; \
+			-o dist/nannytracker-$$platform ./cmd/tui; \
 		GOOS=$${platform%-*} GOARCH=$${platform#*-} go build -ldflags="$(LDFLAGS)" \
-			-o dist/nannytracker-web-$$platform$$(if [ "$${platform#*-}" = "amd64" ] && [ "$${platform%-*}" = "windows" ]; then echo .exe; fi) ./cmd/web; \
+			-o dist/nannytracker-web-$$platform ./cmd/web; \
 	done
 	@echo "Build complete. Binaries are in the dist/ directory."
 
