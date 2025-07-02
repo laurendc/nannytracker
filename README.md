@@ -22,7 +22,7 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
 - **Persistent Storage**: JSON-based data storage with backup capabilities
 
 ### Web Application (In Development)
-- **Modern React Interface**: Built with React 18, TypeScript, and Tailwind CSS
+- **Modern React Interface**: Built with React 18, TypeScript, Tailwind CSS
 - **Responsive Design**: Mobile-first approach with beautiful UI
 - **Real-time Data**: React Query for efficient data fetching and caching
 - **Dashboard**: Overview of trips, expenses, and weekly summaries
@@ -318,6 +318,12 @@ See [CHANGELOG.md](CHANGELOG.md) for a complete history of changes and releases.
 4. Add tests for new functionality
 5. Ensure all tests pass
 6. Submit a pull request
+
+For detailed contributing guidelines, see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
+
+## Release Management
+
+For detailed release management information, see [docs/RELEASE_MANAGEMENT.md](docs/RELEASE_MANAGEMENT.md).
 
 ## License
 
