@@ -21,12 +21,17 @@ jobs:
 
       - name: Cleanup stale branches
         run: |
+          # Configurable branch age threshold (in days)
+          BRANCH_AGE_DAYS=7
+          echo "Branch age threshold for deletion: $BRANCH_AGE_DAYS days"
+          
           # Get all branches except main
           BRANCHES=$(git branch -r | grep -v 'origin/main$' | grep -v 'origin/HEAD' | sed 's/origin\///')
           
           for branch in $BRANCHES; do
             # Skip protected branches
             if [[ "$branch" == "main" || "$branch" == "master" ]]; then
+              echo "Skipping protected branch: $branch"
               continue
             fi
             
@@ -34,9 +39,10 @@ jobs:
             LAST_COMMIT_DATE=$(git log -1 --format=%ct origin/$branch)
             CURRENT_DATE=$(date +%s)
             DAYS_SINCE_LAST_COMMIT=$(( ($CURRENT_DATE - $LAST_COMMIT_DATE) / 86400 ))
+            echo "Branch $branch: $DAYS_SINCE_LAST_COMMIT days since last commit"
             
-            # Delete branch if it's older than 7 days and has no open PRs
-            if [ $DAYS_SINCE_LAST_COMMIT -gt 7 ]; then
+            # Delete branch if it's older than threshold and has no open PRs
+            if [ $DAYS_SINCE_LAST_COMMIT -gt $BRANCH_AGE_DAYS ]; then
               # Check if branch has open PRs using GitHub API
               PR_COUNT=$(curl -s -H "Authorization: token ${{ github.token }}" \
                 "https://api.github.com/repos/${{ github.repository }}/pulls?state=open&head=${{ github.repository_owner }}:$branch" | \

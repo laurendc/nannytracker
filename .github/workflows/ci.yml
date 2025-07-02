@@ -30,21 +30,13 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: go test ./... -v
+        run: make test
 
       - name: Run linter
-        run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-          golangci-lint run ./...
+        run: make lint
 
       - name: Run security checks
-        run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec ./...
+        run: make security
 
       - name: Check formatting
-        run: |
-          if [ -n "$(go fmt ./...)" ]; then
-            echo "Code is not formatted correctly. Please run 'go fmt ./...'"
-            exit 1
-          fi
+        run: make fmt

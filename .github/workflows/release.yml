@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 jobs:
-  release:
+  build-and-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -20,17 +20,67 @@ jobs:
         with:
           go-version: '1.23.0'
 
-      - name: Build binaries
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Run tests
+        run: make test
+
+      - name: Build all platform binaries
+        run: make build-all
+
+      - name: Verify local binaries
         run: |
-          mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -o dist/nannytracker-linux-amd64 ./cmd/tui
-          GOOS=darwin GOARCH=amd64 go build -o dist/nannytracker-darwin-amd64 ./cmd/tui
-          GOOS=windows GOARCH=amd64 go build -o dist/nannytracker-windows-amd64.exe ./cmd/tui
+          echo "🔍 Verifying local binaries..."
+          ./dist/nannytracker-linux-amd64 --version
+          ./dist/nannytracker-web-linux-amd64 --version
+          echo "✅ Local binary verification passed"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: dist/*
           generate_release_notes: true
+          draft: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  verify-release:
+    runs-on: ubuntu-latest
+    needs: build-and-release
+    if: success()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Verify release artifacts
+        run: |
+          echo "🔍 Starting automated release verification..."
+          echo "Version: ${{ steps.version.outputs.VERSION }}"
+          
+          # Make script executable and run verification
+          chmod +x scripts/verify-release.sh
+          ./scripts/verify-release.sh ${{ steps.version.outputs.VERSION }}
+          
+          echo "✅ Release verification completed successfully!"
+
+      - name: Create verification summary
+        if: success()
+        run: |
+          echo "## Release Verification Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Version:** ${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Status:** All artifacts verified successfully" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verified Artifacts:" >> $GITHUB_STEP_SUMMARY
+          echo "- TUI Application (5 platforms)" >> $GITHUB_STEP_SUMMARY
+          echo "- Web Server (5 platforms)" >> $GITHUB_STEP_SUMMARY
+          echo "- Version output validation" >> $GITHUB_STEP_SUMMARY
+          echo "- File integrity checks" >> $GITHUB_STEP_SUMMARY 
