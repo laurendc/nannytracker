@@ -1948,25 +1948,30 @@ func TestTemplateTabContent(t *testing.T) {
 	// Set active tab to Templates
 	uiModel.ActiveTab = TabTemplates
 
-	// Test template selection
+	// Test template selection - now navigates in sorted order (Grocery Run first, then Work Commute)
 	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
 	uiModel = updatedModel.(*Model)
-	if uiModel.SelectedTemplate != 0 {
-		t.Errorf("Expected selected template to be 0, got %d", uiModel.SelectedTemplate)
+
+	// Find which template is selected (should be Grocery Run alphabetically)
+	selectedTemplate := uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Grocery Run" {
+		t.Errorf("Expected first selected template to be 'Grocery Run' (alphabetically first), got '%s'", selectedTemplate.Name)
 	}
 
-	// Test moving selection down
+	// Test moving selection down (should go to Work Commute)
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
 	uiModel = updatedModel.(*Model)
-	if uiModel.SelectedTemplate != 1 {
-		t.Errorf("Expected selected template to be 1, got %d", uiModel.SelectedTemplate)
+	selectedTemplate = uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Work Commute" {
+		t.Errorf("Expected second selected template to be 'Work Commute' (alphabetically second), got '%s'", selectedTemplate.Name)
 	}
 
-	// Test moving selection up
+	// Test moving selection up (should go back to Grocery Run)
 	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
 	uiModel = updatedModel.(*Model)
-	if uiModel.SelectedTemplate != 0 {
-		t.Errorf("Expected selected template to be 0, got %d", uiModel.SelectedTemplate)
+	selectedTemplate = uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Grocery Run" {
+		t.Errorf("Expected up arrow to go back to 'Grocery Run', got '%s'", selectedTemplate.Name)
 	}
 
 	// Test template content display
@@ -2204,5 +2209,132 @@ func TestWeeklySummaryUpdateAfterTripEdit(t *testing.T) {
 		t.Logf("View output:\n%s", view)
 		t.Logf("WeeklySummaries: %+v", uiModel.Data.WeeklySummaries)
 		t.Logf("SelectedWeek: %d, WeeklySummariesLen: %d", uiModel.SelectedWeek, len(uiModel.Data.WeeklySummaries))
+	}
+}
+
+func TestTemplateNavigationWithSorting(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add test templates in non-alphabetical order
+	template1 := model.TripTemplate{
+		Name:        "Zebra Trip",
+		Origin:      "Home",
+		Destination: "Zoo",
+		TripType:    "single",
+		Notes:       "Visit zebras",
+	}
+	template2 := model.TripTemplate{
+		Name:        "Apple Trip",
+		Origin:      "Home",
+		Destination: "Store",
+		TripType:    "round",
+		Notes:       "Buy apples",
+	}
+	template3 := model.TripTemplate{
+		Name:        "Banana Trip",
+		Origin:      "Home",
+		Destination: "Market",
+		TripType:    "single",
+		Notes:       "Buy bananas",
+	}
+
+	// Add templates to the model
+	if err := uiModel.Data.AddTripTemplate(template1); err != nil {
+		t.Fatalf("Failed to add template1: %v", err)
+	}
+	if err := uiModel.Data.AddTripTemplate(template2); err != nil {
+		t.Fatalf("Failed to add template2: %v", err)
+	}
+	if err := uiModel.Data.AddTripTemplate(template3); err != nil {
+		t.Fatalf("Failed to add template3: %v", err)
+	}
+
+	// Update the model's template list
+	uiModel.TripTemplates = uiModel.Data.TripTemplates
+
+	// Set active tab to Templates
+	uiModel.ActiveTab = TabTemplates
+
+	// Test initial selection (should start with no selection)
+	if uiModel.SelectedTemplate != -1 {
+		t.Errorf("Expected initial template selection to be -1, got %d", uiModel.SelectedTemplate)
+	}
+
+	// Test first down arrow (should select first template in sorted order - Apple Trip)
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+
+	// Verify that Apple Trip is selected (first alphabetically)
+	if uiModel.SelectedTemplate == -1 {
+		t.Error("Expected a template to be selected after first down arrow")
+	} else {
+		selectedTemplate := uiModel.TripTemplates[uiModel.SelectedTemplate]
+		if selectedTemplate.Name != "Apple Trip" {
+			t.Errorf("Expected Apple Trip to be selected first (alphabetically), got %s", selectedTemplate.Name)
+		}
+	}
+
+	// Test second down arrow (should select Banana Trip)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+
+	selectedTemplate := uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Banana Trip" {
+		t.Errorf("Expected Banana Trip to be selected second (alphabetically), got %s", selectedTemplate.Name)
+	}
+
+	// Test third down arrow (should select Zebra Trip)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+
+	selectedTemplate = uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Zebra Trip" {
+		t.Errorf("Expected Zebra Trip to be selected third (alphabetically), got %s", selectedTemplate.Name)
+	}
+
+	// Test fourth down arrow (should wrap around to Apple Trip)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyDown})
+	uiModel = updatedModel.(*Model)
+
+	selectedTemplate = uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Apple Trip" {
+		t.Errorf("Expected wrap-around to Apple Trip, got %s", selectedTemplate.Name)
+	}
+
+	// Test up arrow (should go back to Zebra Trip)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = updatedModel.(*Model)
+
+	selectedTemplate = uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Zebra Trip" {
+		t.Errorf("Expected up arrow to go to Zebra Trip, got %s", selectedTemplate.Name)
+	}
+
+	// Test up arrow again (should go to Banana Trip)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = updatedModel.(*Model)
+
+	selectedTemplate = uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Banana Trip" {
+		t.Errorf("Expected up arrow to go to Banana Trip, got %s", selectedTemplate.Name)
+	}
+
+	// Test up arrow again (should go to Apple Trip)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = updatedModel.(*Model)
+
+	selectedTemplate = uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Apple Trip" {
+		t.Errorf("Expected up arrow to go to Apple Trip, got %s", selectedTemplate.Name)
+	}
+
+	// Test up arrow again (should wrap around to Zebra Trip)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyUp})
+	uiModel = updatedModel.(*Model)
+
+	selectedTemplate = uiModel.TripTemplates[uiModel.SelectedTemplate]
+	if selectedTemplate.Name != "Zebra Trip" {
+		t.Errorf("Expected wrap-around to Zebra Trip, got %s", selectedTemplate.Name)
 	}
 }
