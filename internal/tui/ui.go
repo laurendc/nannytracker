@@ -814,10 +814,58 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.TripTemplates) == 0 {
 					return m, cmd
 				}
-				if m.SelectedTemplate <= 0 {
-					m.SelectedTemplate = len(m.TripTemplates) - 1
+				// For templates, we need to navigate through the sorted display order
+				// Create a sorted copy to determine the next/previous template
+				displayTemplates := make([]model.TripTemplate, len(m.TripTemplates))
+				copy(displayTemplates, m.TripTemplates)
+				sort.Slice(displayTemplates, func(i, j int) bool {
+					return strings.ToLower(displayTemplates[i].Name) < strings.ToLower(displayTemplates[j].Name)
+				})
+
+				// Find current selection in sorted order
+				currentSortedIndex := -1
+				for i, displayTemplate := range displayTemplates {
+					if m.SelectedTemplate >= 0 && m.SelectedTemplate < len(m.TripTemplates) {
+						originalTemplate := m.TripTemplates[m.SelectedTemplate]
+						if displayTemplate.Name == originalTemplate.Name &&
+							displayTemplate.Origin == originalTemplate.Origin &&
+							displayTemplate.Destination == originalTemplate.Destination &&
+							displayTemplate.TripType == originalTemplate.TripType {
+							currentSortedIndex = i
+							break
+						}
+					}
+				}
+
+				// Navigate in sorted order
+				if currentSortedIndex <= 0 {
+					// Go to last template
+					if len(displayTemplates) > 0 {
+						lastTemplate := displayTemplates[len(displayTemplates)-1]
+						// Find original index of last template
+						for i, originalTemplate := range m.TripTemplates {
+							if lastTemplate.Name == originalTemplate.Name &&
+								lastTemplate.Origin == originalTemplate.Origin &&
+								lastTemplate.Destination == originalTemplate.Destination &&
+								lastTemplate.TripType == originalTemplate.TripType {
+								m.SelectedTemplate = i
+								break
+							}
+						}
+					}
 				} else {
-					m.SelectedTemplate--
+					// Go to previous template
+					prevTemplate := displayTemplates[currentSortedIndex-1]
+					// Find original index of previous template
+					for i, originalTemplate := range m.TripTemplates {
+						if prevTemplate.Name == originalTemplate.Name &&
+							prevTemplate.Origin == originalTemplate.Origin &&
+							prevTemplate.Destination == originalTemplate.Destination &&
+							prevTemplate.TripType == originalTemplate.TripType {
+							m.SelectedTemplate = i
+							break
+						}
+					}
 				}
 				m.SelectedTrip = -1
 				m.SelectedExpense = -1
@@ -849,10 +897,58 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.TripTemplates) == 0 {
 					return m, cmd
 				}
-				if m.SelectedTemplate >= len(m.TripTemplates)-1 {
-					m.SelectedTemplate = 0
+				// For templates, we need to navigate through the sorted display order
+				// Create a sorted copy to determine the next/previous template
+				displayTemplates := make([]model.TripTemplate, len(m.TripTemplates))
+				copy(displayTemplates, m.TripTemplates)
+				sort.Slice(displayTemplates, func(i, j int) bool {
+					return strings.ToLower(displayTemplates[i].Name) < strings.ToLower(displayTemplates[j].Name)
+				})
+
+				// Find current selection in sorted order
+				currentSortedIndex := -1
+				for i, displayTemplate := range displayTemplates {
+					if m.SelectedTemplate >= 0 && m.SelectedTemplate < len(m.TripTemplates) {
+						originalTemplate := m.TripTemplates[m.SelectedTemplate]
+						if displayTemplate.Name == originalTemplate.Name &&
+							displayTemplate.Origin == originalTemplate.Origin &&
+							displayTemplate.Destination == originalTemplate.Destination &&
+							displayTemplate.TripType == originalTemplate.TripType {
+							currentSortedIndex = i
+							break
+						}
+					}
+				}
+
+				// Navigate in sorted order
+				if currentSortedIndex >= len(displayTemplates)-1 {
+					// Go to first template
+					if len(displayTemplates) > 0 {
+						firstTemplate := displayTemplates[0]
+						// Find original index of first template
+						for i, originalTemplate := range m.TripTemplates {
+							if firstTemplate.Name == originalTemplate.Name &&
+								firstTemplate.Origin == originalTemplate.Origin &&
+								firstTemplate.Destination == originalTemplate.Destination &&
+								firstTemplate.TripType == originalTemplate.TripType {
+								m.SelectedTemplate = i
+								break
+							}
+						}
+					}
 				} else {
-					m.SelectedTemplate++
+					// Go to next template
+					nextTemplate := displayTemplates[currentSortedIndex+1]
+					// Find original index of next template
+					for i, originalTemplate := range m.TripTemplates {
+						if nextTemplate.Name == originalTemplate.Name &&
+							nextTemplate.Origin == originalTemplate.Origin &&
+							nextTemplate.Destination == originalTemplate.Destination &&
+							nextTemplate.TripType == originalTemplate.TripType {
+							m.SelectedTemplate = i
+							break
+						}
+					}
 				}
 				m.SelectedTrip = -1
 				m.SelectedExpense = -1
@@ -1293,6 +1389,20 @@ func (m *Model) View() string {
 				return strings.ToLower(displayTemplates[i].Name) < strings.ToLower(displayTemplates[j].Name)
 			})
 
+			// Create a mapping from sorted display index to original index
+			displayToOriginal := make(map[int]int)
+			for i, displayTemplate := range displayTemplates {
+				for j, originalTemplate := range m.TripTemplates {
+					if displayTemplate.Name == originalTemplate.Name &&
+						displayTemplate.Origin == originalTemplate.Origin &&
+						displayTemplate.Destination == originalTemplate.Destination &&
+						displayTemplate.TripType == originalTemplate.TripType {
+						displayToOriginal[i] = j
+						break
+					}
+				}
+			}
+
 			startIdx := m.CurrentPage * m.PageSize
 			endIdx := startIdx + m.PageSize
 			if endIdx > len(displayTemplates) {
@@ -1308,15 +1418,8 @@ func (m *Model) View() string {
 					templateLine += fmt.Sprintf(" - %s", template.Notes)
 				}
 
-				// Find the original index in m.TripTemplates for selection highlighting
-				originalIndex := -1
-				for j, t := range m.TripTemplates {
-					if t.Name == template.Name && t.Origin == template.Origin &&
-						t.Destination == template.Destination && t.TripType == template.TripType {
-						originalIndex = j
-						break
-					}
-				}
+				// Use the mapping to find the original index for selection highlighting
+				originalIndex := displayToOriginal[i]
 
 				if m.SelectedTemplate == originalIndex {
 					templateLine = selectedStyle.Render("* " + templateLine)
