@@ -1,0 +1,56 @@
+name: Verify Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version to verify (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+  repository_dispatch:
+    types: [verify-release]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${{ github.event.client_payload.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify release artifacts
+        run: |
+          echo "🔍 Starting automated release verification..."
+          echo "Version: ${{ steps.version.outputs.VERSION }}"
+          
+          # Make script executable
+          chmod +x scripts/verify-release.sh
+          
+          # Run verification
+          ./scripts/verify-release.sh ${{ steps.version.outputs.VERSION }}
+          
+          echo "✅ Release verification completed successfully!"
+
+      - name: Create verification summary
+        if: success()
+        run: |
+          echo "## Release Verification Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Version:** ${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Status:** All artifacts verified successfully" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verified Artifacts:" >> $GITHUB_STEP_SUMMARY
+          echo "- TUI Application (5 platforms)" >> $GITHUB_STEP_SUMMARY
+          echo "- Web Server (5 platforms)" >> $GITHUB_STEP_SUMMARY
+          echo "- Version output validation" >> $GITHUB_STEP_SUMMARY
+          echo "- File integrity checks" >> $GITHUB_STEP_SUMMARY 
