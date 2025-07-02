@@ -93,8 +93,8 @@ verify_binary() {
         chmod +x "$binary"
     fi
     
-    # Test version output
-    if [[ "$binary" == *"nannytracker"* ]]; then
+    # For native platform (linux-amd64), check version
+    if [[ "$binary" == *"linux-amd64"* ]]; then
         if ./"$binary" --version 2>/dev/null | grep -q "$VERSION"; then
             echo -e "${GREEN}✓${NC}"
             return 0
@@ -103,9 +103,14 @@ verify_binary() {
             return 1
         fi
     else
-        # For web binaries, just check they're executable
-        echo -e "${GREEN}✓${NC}"
-        return 0
+        # For cross-compiled binaries, just check they're valid binaries
+        if file "$binary" | grep -q "executable"; then
+            echo -e "${GREEN}✓${NC}"
+            return 0
+        else
+            echo -e "${RED}✗ (not a valid executable)${NC}"
+            return 1
+        fi
     fi
 }
 
