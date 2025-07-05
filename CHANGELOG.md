@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2024-07-04
+
+### Added
+- Optimized build workflow with fast development builds
+- New `./scripts/dev-build.sh` for quick development builds with verification
+- Enhanced build targets: `build-dev`, `build-ci`, `build-all`
+- Comprehensive documentation updates for build workflow
+- Build workflow patterns in AI assistant context
+
+### Changed
+- CI/CD now uses faster Linux-only builds for PR checks
+- Full cross-platform builds reserved for releases only
+- Updated contributing guidelines with new build options
+- Improved developer onboarding experience
+- Enhanced README with build workflow section
+
+### Technical
+- Faster development cycles with optimized build targets
+- Maintained cross-platform support for release distribution
+- Professional CI/CD pipeline optimization
+- Industry-standard TUI development practices
+
 ## [Unreleased]
 
 ### Added
@@ -46,5 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Environment-based configuration
 - Cross-platform support (Linux, macOS, Windows)
 
-[Unreleased]: https://github.com/laurendc/nannytracker/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/laurendc/nannytracker/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/laurendc/nannytracker/compare/v1.0.3...v1.0.4
+[1.0.3]: https://github.com/laurendc/nannytracker/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/laurendc/nannytracker/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/laurendc/nannytracker/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/laurendc/nannytracker/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/laurendc/nannytracker/releases/tag/v0.1.0 
