@@ -131,3 +131,5 @@ jspm_packages/
 
 # Go/Web build artifacts
 
+# Context (private development file)
+CONTEXT.md
