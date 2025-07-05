@@ -21,8 +21,10 @@ help:
 	@echo "NannyTracker Build System"
 	@echo "========================="
 	@echo "Build Targets:"
-	@echo "  build         - Build for current platform"
-	@echo "  build-all     - Build for all supported platforms"
+	@echo "  build         - Build for current platform (development)"
+	@echo "  build-dev     - Build for development (Linux only, fast)"
+	@echo "  build-ci      - Build for CI (Linux only, optimized)"
+	@echo "  build-all     - Build for all supported platforms (releases)"
 	@echo "  clean         - Clean build artifacts"
 	@echo ""
 	@echo "Test Targets:"
@@ -44,14 +46,23 @@ help:
 	@echo "  security      - Run security scan"
 	@echo "  deps-check    - Check for outdated dependencies"
 	@echo "  deps-update   - Update dependencies"
+	@echo ""
+	@echo "Quick Development:"
+	@echo "  ./scripts/dev-build.sh - Quick development build with verification"
 
-# Build for current platform
+# Build for current platform (development)
 build:
 	@echo "Building for current platform..."
 	go build -ldflags="$(LDFLAGS)" -o nannytracker ./cmd/tui
 	@echo "Build complete."
 
-# Build for all supported platforms
+# Build for development (Linux only, fast)
+build-dev:
+	@echo "Building for development (Linux only)..."
+	go build -ldflags="$(LDFLAGS)" -o nannytracker ./cmd/tui
+	@echo "Development build complete."
+
+# Build for all supported platforms (release builds)
 build-all:
 	@echo "Building for all platforms..."
 	@mkdir -p dist
@@ -60,6 +71,14 @@ build-all:
 			-o dist/nannytracker-$$platform ./cmd/tui; \
 	done
 	@echo "Build complete. Binaries are in the dist/ directory."
+
+# Build for CI (Linux only, optimized for speed)
+build-ci:
+	@echo "Building for CI (Linux only)..."
+	@mkdir -p dist
+	GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" \
+		-o dist/nannytracker-linux-amd64 ./cmd/tui
+	@echo "CI build complete."
 
 # Run all tests (backend and frontend)
 test: test-backend test-frontend

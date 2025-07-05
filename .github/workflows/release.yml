@@ -34,7 +34,8 @@ jobs:
       - name: Run all tests
         run: make test
 
-      - name: Build all platform binaries
+      - name: Build all platform binaries (release)
+        # Full cross-platform build for release distribution
         run: make build-all
 
       - name: Verify local binaries

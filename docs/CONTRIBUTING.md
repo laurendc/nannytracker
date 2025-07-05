@@ -42,7 +42,14 @@ NannyTracker uses a **Makefile as the single source of truth** for all build, te
    ```
 5. **Build the application:**
    ```bash
+   # For development (fast, current platform)
    make build
+   
+   # For quick development builds
+   ./scripts/dev-build.sh
+   
+   # For all platforms (releases only)
+   make build-all
    ```
 6. **Run linter and security checks:**
    ```bash
@@ -59,6 +66,7 @@ NannyTracker uses a **Makefile as the single source of truth** for all build, te
 3. **Add or update tests for new/changed functionality.**
 4. **Run all checks locally:**
    - `make test`
+   - `make build` (or `./scripts/dev-build.sh`)
    - `make lint`
    - `make security`
    - `make fmt`
