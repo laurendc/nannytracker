@@ -32,13 +32,6 @@ TUI_BINARIES=(
     "nannytracker-darwin-arm64"
 )
 
-WEB_BINARIES=(
-    "nannytracker-web-linux-amd64"
-    "nannytracker-web-linux-arm64"
-    "nannytracker-web-darwin-amd64"
-    "nannytracker-web-darwin-arm64"
-)
-
 echo -e "${BLUE}🔍 NannyTracker Release Verification${NC}"
 echo -e "${BLUE}Version: ${VERSION}${NC}"
 echo -e "${BLUE}Repository: ${REPO}${NC}"
@@ -129,30 +122,16 @@ done
 
 echo ""
 
-# Download and verify Web binaries
-echo -e "${YELLOW}🌐 Web Server Binaries:${NC}"
-web_success=0
-web_total=${#WEB_BINARIES[@]}
 
-for binary in "${WEB_BINARIES[@]}"; do
-    if download_file "$binary"; then
-        if verify_binary "$binary"; then
-            web_success=$((web_success + 1))
-        fi
-    fi
-done
-
-echo ""
 
 # Summary
 echo -e "${BLUE}📊 Verification Summary:${NC}"
 echo -e "  TUI Binaries: ${tui_success}/${tui_total} ✓"
-echo -e "  Web Binaries: ${web_success}/${web_total} ✓"
-echo -e "  Total: $((tui_success + web_success))/$((tui_total + web_total)) ✓"
+echo -e "  Total: ${tui_success}/${tui_total} ✓"
 
 # Overall result
-total_expected=$((tui_total + web_total))
-total_actual=$((tui_success + web_success))
+total_expected=$tui_total
+total_actual=$tui_success
 
 if [[ $total_actual -eq $total_expected ]]; then
     echo -e "${GREEN}🎉 All artifacts verified successfully!${NC}"

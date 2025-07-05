@@ -10,7 +10,6 @@ GIT_COMMIT := $(shell git rev-parse --short HEAD)
 
 # Platform definitions - DRY principle
 PLATFORMS := linux-amd64 linux-arm64 darwin-amd64 darwin-arm64
-BINARY_NAMES := nannytracker nannytracker-web
 
 # Build flags
 LDFLAGS := -X github.com/laurendc/nannytracker/pkg/version.Version=$(VERSION) \
@@ -50,7 +49,6 @@ help:
 build:
 	@echo "Building for current platform..."
 	go build -ldflags="$(LDFLAGS)" -o nannytracker ./cmd/tui
-	go build -ldflags="$(LDFLAGS)" -o nannytracker-web ./cmd/web
 	@echo "Build complete."
 
 # Build for all supported platforms
@@ -60,8 +58,6 @@ build-all:
 	@for platform in $(PLATFORMS); do \
 		GOOS=$${platform%-*} GOARCH=$${platform#*-} go build -ldflags="$(LDFLAGS)" \
 			-o dist/nannytracker-$$platform ./cmd/tui; \
-		GOOS=$${platform%-*} GOARCH=$${platform#*-} go build -ldflags="$(LDFLAGS)" \
-			-o dist/nannytracker-web-$$platform ./cmd/web; \
 	done
 	@echo "Build complete. Binaries are in the dist/ directory."
 
@@ -82,7 +78,7 @@ test-frontend:
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf dist/
-	rm -f nannytracker nannytracker-web
+	rm -f nannytracker
 	go clean -cache
 	@echo "Clean complete."
 
@@ -140,11 +136,6 @@ version:
 		./nannytracker --version 2>/dev/null || echo "  TUI: Version information not available"; \
 	else \
 		echo "  TUI: Binary not built"; \
-	fi
-	@if [ -f ./nannytracker-web ]; then \
-		./nannytracker-web --version 2>/dev/null || echo "  Web: Version information not available"; \
-	else \
-		echo "  Web: Binary not built"; \
 	fi
 
 # Verify release artifacts for a specific version
