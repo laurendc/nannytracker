@@ -179,10 +179,13 @@ make deps
 # Run tests
 make test
 
-# Build for current platform
+# Build for development (fast, current platform)
 make build
 
-# Build for all platforms
+# Quick development build with verification
+./scripts/dev-build.sh
+
+# Build for all platforms (releases only)
 make build-all
 
 # Run linter
@@ -191,6 +194,24 @@ make lint
 # Format code
 make fmt
 ```
+
+### Build Workflow
+
+NannyTracker uses an optimized build workflow to balance development speed with cross-platform support:
+
+```bash
+# Development builds (fast, current platform)
+make build              # Standard development build
+./scripts/dev-build.sh  # Quick build with verification
+
+# Release builds (all platforms)
+make build-all          # Full cross-platform build for releases
+```
+
+**Build Strategy:**
+- **Development**: Fast Linux builds for daily work
+- **CI/CD**: Linux-only builds for PR checks (faster)
+- **Releases**: Full cross-platform builds (Linux, macOS)
 
 ### Running Tests
 
