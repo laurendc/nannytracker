@@ -103,7 +103,7 @@ Both the TUI and web applications include version information:
 ./nannytracker --version
 
 # Web application
-./nannytracker-web --version
+
 ```
 
 ### API Version Endpoint
