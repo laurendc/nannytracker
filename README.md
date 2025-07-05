@@ -63,9 +63,6 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
    ```bash
    # Terminal application
    ./nannytracker-linux-amd64
-   
-   # Web server
-   ./nannytracker-web-linux-amd64
    ```
 
 ### Option 2: Build from Source
@@ -85,13 +82,10 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
    cd web && npm install
    ```
 
-3. Build the applications:
+3. Build the application:
    ```bash
    # Build terminal application
    go build -o nannytracker ./cmd/tui
-   
-   # Build web server
-   go build -o nannytracker-web ./cmd/web
    
    # Or use the Makefile
    make build
@@ -138,18 +132,7 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
 
 ### Web Application
 
-```bash
-# Start the web server
-./nannytracker-web
-
-# Check version information
-./nannytracker-web --version
-```
-
-**Access the Web Interface:**
-1. Start the web server: `./nannytracker-web`
-2. Open your browser to `http://localhost:8080`
-3. The web interface will be available at the root URL
+The web application is designed to run as a development server or be deployed as a web service, not as a standalone binary.
 
 **For Development:**
 ```bash
