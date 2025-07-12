@@ -2338,3 +2338,97 @@ func TestTemplateNavigationWithSorting(t *testing.T) {
 		t.Errorf("Expected wrap-around to Zebra Trip, got %s", selectedTemplate.Name)
 	}
 }
+
+func TestRenderStatusBar(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test Weekly Summary tab
+	uiModel.ActiveTab = TabWeeklySummaries
+	uiModel.Mode = "date"
+	status := uiModel.renderStatusBar()
+	if !strings.Contains(status, "📊 Weekly Summary") {
+		t.Errorf("Expected status to contain '📊 Weekly Summary', got: %s", status)
+	}
+
+	// Test Trips tab with search
+	uiModel.ActiveTab = TabTrips
+	uiModel.SearchMode = true
+	uiModel.SearchQuery = "grocery"
+	status = uiModel.renderStatusBar()
+	if !strings.Contains(status, "🚗 Trips") {
+		t.Errorf("Expected status to contain '🚗 Trips', got: %s", status)
+	}
+	if !strings.Contains(status, "Search: \"grocery\"") {
+		t.Errorf("Expected status to contain search query, got: %s", status)
+	}
+}
+
+func TestRenderContextualControls(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test Weekly Summary controls
+	uiModel.ActiveTab = TabWeeklySummaries
+	controls := uiModel.renderContextualControls()
+	if !strings.Contains(controls, "NAVIGATION:") {
+		t.Errorf("Expected controls to contain navigation section, got: %s", controls)
+	}
+	if !strings.Contains(controls, "ACTIONS:") {
+		t.Errorf("Expected controls to contain actions section, got: %s", controls)
+	}
+
+	// Test Trips controls
+	uiModel.ActiveTab = TabTrips
+	controls = uiModel.renderContextualControls()
+	if !strings.Contains(controls, "DELETE:") {
+		t.Errorf("Expected controls to contain delete section, got: %s", controls)
+	}
+	if !strings.Contains(controls, "QUICK ADD:") {
+		t.Errorf("Expected controls to contain quick add section, got: %s", controls)
+	}
+
+	// Test that each control section is on its own line
+	uiModel.ActiveTab = TabTrips
+	controls = uiModel.renderContextualControls()
+	lines := strings.Split(controls, "\n")
+
+	// Should have: NAVIGATION, blank line, ACTIONS, QUICK ADD, DELETE, and potentially empty lines
+	var navigationFound, actionsFound, quickAddFound, deleteFound bool
+	var blankLineAfterNavigation bool
+
+	for i, line := range lines {
+		if strings.Contains(line, "NAVIGATION:") {
+			navigationFound = true
+			// Check if next line is blank (for separation)
+			if i+1 < len(lines) && strings.TrimSpace(lines[i+1]) == "" {
+				blankLineAfterNavigation = true
+			}
+		}
+		if strings.Contains(line, "ACTIONS:") {
+			actionsFound = true
+		}
+		if strings.Contains(line, "QUICK ADD:") {
+			quickAddFound = true
+		}
+		if strings.Contains(line, "DELETE:") {
+			deleteFound = true
+		}
+	}
+
+	if !navigationFound {
+		t.Error("Expected to find NAVIGATION section")
+	}
+	if !actionsFound {
+		t.Error("Expected to find ACTIONS section")
+	}
+	if !quickAddFound {
+		t.Error("Expected to find QUICK ADD section")
+	}
+	if !deleteFound {
+		t.Error("Expected to find DELETE section")
+	}
+	if !blankLineAfterNavigation {
+		t.Error("Expected blank line after NAVIGATION section")
+	}
+}

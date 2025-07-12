@@ -44,6 +44,7 @@ type Model struct {
 	SelectedTemplate  int                  // Index of selected template for operations
 	CurrentTemplate   model.TripTemplate   // Current template being edited
 	JustChangedMode   bool                 // Flag to prevent double-processing after mode change
+	Width             int                  // Terminal width in characters
 }
 
 const (
@@ -139,6 +140,12 @@ func (m *Model) Init() tea.Cmd {
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
+
+	// Handle window size updates
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.Width = msg.Width
+	}
 
 	// Update text input
 	m.TextInput, cmd = m.TextInput.Update(msg)
@@ -1212,6 +1219,9 @@ func (m *Model) View() string {
 		m.Err = nil
 	}
 
+	// Show status bar
+	s.WriteString(m.renderStatusBar() + "\n")
+
 	// Show mode and input field
 	s.WriteString(headerStyle.Render(fmt.Sprintf("Mode: %s", m.Mode)) + "\n")
 	s.WriteString(m.TextInput.View() + "\n\n")
@@ -1442,21 +1452,129 @@ func (m *Model) View() string {
 
 	s.WriteString("\n")
 
-	// Show help text
-	s.WriteString("Controls:\n")
-	helpStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#888888")).
-		SetString("↑/↓: Navigate items\n" +
-			"Tab/Shift+Tab: Switch tabs\n" +
-			"←/→: Switch weeks/pages\n" +
-			"Ctrl+E: Edit selected item\n" +
-			"Ctrl+D: Delete selected item\n" +
-			"Ctrl+F: Toggle search mode\n" +
-			"Ctrl+X: Add expense\n" +
-			"Ctrl+R: Toggle recurring trip mode or convert selected trip to recurring\n" +
-			"Ctrl+T: Create new trip template\n" +
-			"Ctrl+U: Use selected template to create a new trip\n")
-	s.WriteString(helpStyle.String())
+	// Show context-aware controls
+	s.WriteString(m.renderContextualControls())
+
+	return s.String()
+}
+
+// renderStatusBar renders the status bar with current mode and context information
+func (m *Model) renderStatusBar() string {
+	// Create status bar styles
+	statusStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Background(lipgloss.Color("#333333")).
+		Padding(0, 1)
+
+	// Get current tab name
+	tabNames := []string{"📊 Weekly Summary", "🚗 Trips", "💰 Expenses", "📋 Templates"}
+	currentTab := tabNames[m.ActiveTab]
+
+	// Build status information
+	statusInfo := fmt.Sprintf("%s | Mode: %s", currentTab, m.Mode)
+
+	// Add context-specific information
+	switch m.ActiveTab {
+	case TabTrips:
+		if m.SearchMode {
+			statusInfo += fmt.Sprintf(" | Search: \"%s\"", m.SearchQuery)
+		}
+		if len(m.Trips) > 0 {
+			statusInfo += fmt.Sprintf(" | %d trips", len(m.Trips))
+		}
+	case TabExpenses:
+		if len(m.Data.Expenses) > 0 {
+			statusInfo += fmt.Sprintf(" | %d expenses", len(m.Data.Expenses))
+		}
+	case TabTemplates:
+		if len(m.TripTemplates) > 0 {
+			statusInfo += fmt.Sprintf(" | %d templates", len(m.TripTemplates))
+		}
+	}
+
+	// Add pagination info if applicable
+	if m.ActiveTab == TabTrips || m.ActiveTab == TabExpenses || m.ActiveTab == TabTemplates {
+		var totalItems int
+		switch m.ActiveTab {
+		case TabTrips:
+			totalItems = len(m.Trips)
+		case TabExpenses:
+			totalItems = len(m.Data.Expenses)
+		case TabTemplates:
+			totalItems = len(m.TripTemplates)
+		}
+
+		if totalItems > m.PageSize {
+			totalPages := (totalItems + m.PageSize - 1) / m.PageSize
+			statusInfo += fmt.Sprintf(" | Page %d/%d", m.CurrentPage+1, totalPages)
+		}
+	}
+
+	return statusStyle.Render(statusInfo)
+}
+
+// renderContextualControls renders context-aware controls based on current tab and mode
+func (m *Model) renderContextualControls() string {
+	var s strings.Builder
+
+	// Create control styles
+	navigationStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00FF00")). // Green
+		Bold(true)
+
+	actionStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFF00")). // Yellow
+		Bold(true)
+
+	destructiveStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FF0000")). // Red
+		Bold(true)
+
+	quickAddStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00FFFF")). // Cyan
+		Bold(true)
+
+	normalStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#888888"))
+
+	// NAVIGATION (always shown)
+	s.WriteString(navigationStyle.Render("NAVIGATION:  ↑/↓ Navigate  [Tab] Switch  ←/→ Pages  [Enter] Select  [Esc] Cancel") + "\n")
+
+	// Blank line for separation
+	s.WriteString("\n")
+
+	// ACTIONS (context-specific)
+	switch m.ActiveTab {
+	case TabWeeklySummaries:
+		s.WriteString(actionStyle.Render("ACTIONS:     ←/→ Switch weeks") + "\n")
+	case TabTrips:
+		s.WriteString(actionStyle.Render("ACTIONS:     [Ctrl+E] Edit  [Ctrl+F] Search  [Ctrl+T] Template") + "\n")
+	case TabExpenses:
+		s.WriteString(actionStyle.Render("ACTIONS:     [Ctrl+E] Edit  [Ctrl+F] Filter") + "\n")
+	case TabTemplates:
+		s.WriteString(actionStyle.Render("ACTIONS:     [Ctrl+E] Edit  [Ctrl+F] Search") + "\n")
+	}
+
+	// QUICK ADD (context-specific)
+	switch m.ActiveTab {
+	case TabTrips:
+		s.WriteString(quickAddStyle.Render("QUICK ADD:   [Ctrl+X] Expense  [Ctrl+R] Recurring") + "\n")
+	case TabExpenses:
+		s.WriteString(quickAddStyle.Render("QUICK ADD:   [Ctrl+X] Add expense") + "\n")
+	case TabTemplates:
+		s.WriteString(quickAddStyle.Render("QUICK ADD:   [Ctrl+T] New template  [U] Use template") + "\n")
+	}
+
+	// DELETE (context-specific)
+	switch m.ActiveTab {
+	case TabTrips, TabExpenses, TabTemplates:
+		s.WriteString(destructiveStyle.Render("DELETE:      [Ctrl+D] Delete selected") + "\n")
+	}
+
+	// Show status information
+	if m.SearchMode {
+		s.WriteString(normalStyle.Render("🔍 Search mode active") + "\n")
+	}
 
 	return s.String()
 }
