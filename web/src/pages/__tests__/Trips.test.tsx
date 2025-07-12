@@ -119,7 +119,13 @@ describe('Trips', () => {
     const user = userEvent.setup()
     const { tripsApi } = await import('../../lib/api')
     vi.mocked(tripsApi.getAll).mockResolvedValue([])
-    vi.mocked(tripsApi.create).mockResolvedValue({})
+    vi.mocked(tripsApi.create).mockResolvedValue({
+      date: '2024-12-20',
+      origin: 'Home',
+      destination: 'Work',
+      type: 'single',
+      miles: 0
+    })
 
     render(
       <TestWrapper>
@@ -149,7 +155,15 @@ describe('Trips', () => {
     const submitButton = submitButtons[1]
     await user.click(submitButton)
 
-    expect(submitButton).toBeInTheDocument()
+    // After successful submission, the form should close and the API should be called
+    await waitFor(() => {
+      expect(tripsApi.create).toHaveBeenCalledWith({
+        date: '2024-12-20',
+        origin: 'Home',
+        destination: 'Work',
+        type: 'single',
+      })
+    })
   })
 
   it('displays trips list when data is available', async () => {
@@ -255,7 +269,13 @@ describe('Trips', () => {
     const user = userEvent.setup()
     const { tripsApi } = await import('../../lib/api')
     vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
-    vi.mocked(tripsApi.update).mockResolvedValue({})
+    vi.mocked(tripsApi.update).mockResolvedValue({
+      date: '2024-12-18',
+      origin: 'Updated Home',
+      destination: 'Work',
+      type: 'single',
+      miles: 15.5
+    })
 
     render(
       <TestWrapper>
