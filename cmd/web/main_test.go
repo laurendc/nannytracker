@@ -158,7 +158,7 @@ func TestTripsEndpoint(t *testing.T) {
 	}
 
 	// Test invalid method
-	req = httptest.NewRequest(http.MethodPut, "/api/trips", nil)
+	req = httptest.NewRequest(http.MethodPatch, "/api/trips", nil)
 	w = httptest.NewRecorder()
 	server.handleTrips(w, req)
 
@@ -520,5 +520,366 @@ func TestHTTPServerConfig(t *testing.T) {
 	}
 	if srv.IdleTimeout != 60*time.Second {
 		t.Errorf("Expected IdleTimeout to be 60s, got %v", srv.IdleTimeout)
+	}
+}
+
+func TestTripsUpdateEndpoint(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// First create a trip
+	trip := core.Trip{
+		Date:        "2024-12-18",
+		Origin:      "Test Home",
+		Destination: "Test Work",
+		Miles:       5.0,
+		Type:        "single",
+	}
+
+	tripJSON, _ := json.Marshal(trip)
+	req := httptest.NewRequest(http.MethodPost, "/api/trips", bytes.NewBuffer(tripJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("Expected status 201, got %d", w.Code)
+	}
+
+	// Now update the trip
+	updatedTrip := core.Trip{
+		Date:        "2024-12-19",
+		Origin:      "Updated Home",
+		Destination: "Updated Work",
+		Miles:       10.0,
+		Type:        "round",
+	}
+
+	updatedTripJSON, _ := json.Marshal(updatedTrip)
+	req = httptest.NewRequest(http.MethodPut, "/api/trips/0", bytes.NewBuffer(updatedTripJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	var responseTrip core.Trip
+	if err := json.NewDecoder(w.Body).Decode(&responseTrip); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if responseTrip.Date != updatedTrip.Date {
+		t.Errorf("Expected date %s, got %s", updatedTrip.Date, responseTrip.Date)
+	}
+	if responseTrip.Origin != updatedTrip.Origin {
+		t.Errorf("Expected origin %s, got %s", updatedTrip.Origin, responseTrip.Origin)
+	}
+	if responseTrip.Miles != updatedTrip.Miles {
+		t.Errorf("Expected miles %f, got %f", updatedTrip.Miles, responseTrip.Miles)
+	}
+}
+
+func TestTripsUpdateInvalidIndex(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	trip := core.Trip{
+		Date:        "2024-12-18",
+		Origin:      "Test Home",
+		Destination: "Test Work",
+		Miles:       5.0,
+		Type:        "single",
+	}
+
+	tripJSON, _ := json.Marshal(trip)
+	req := httptest.NewRequest(http.MethodPut, "/api/trips/999", bytes.NewBuffer(tripJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+}
+
+func TestTripsUpdateInvalidData(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// First create a trip
+	trip := core.Trip{
+		Date:        "2024-12-18",
+		Origin:      "Test Home",
+		Destination: "Test Work",
+		Miles:       5.0,
+		Type:        "single",
+	}
+
+	tripJSON, _ := json.Marshal(trip)
+	req := httptest.NewRequest(http.MethodPost, "/api/trips", bytes.NewBuffer(tripJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("Expected status 201, got %d", w.Code)
+	}
+
+	// Try to update with invalid data
+	invalidTrip := map[string]interface{}{
+		"date":        "invalid-date",
+		"origin":      "",
+		"destination": "Test Work",
+		"miles":       -5.0,
+		"type":        "invalid",
+	}
+
+	invalidTripJSON, _ := json.Marshal(invalidTrip)
+	req = httptest.NewRequest(http.MethodPut, "/api/trips/0", bytes.NewBuffer(invalidTripJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+}
+
+func TestTripsDeleteEndpoint(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// First create a trip
+	trip := core.Trip{
+		Date:        "2024-12-18",
+		Origin:      "Test Home",
+		Destination: "Test Work",
+		Miles:       5.0,
+		Type:        "single",
+	}
+
+	tripJSON, _ := json.Marshal(trip)
+	req := httptest.NewRequest(http.MethodPost, "/api/trips", bytes.NewBuffer(tripJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("Expected status 201, got %d", w.Code)
+	}
+
+	// Now delete the trip
+	req = httptest.NewRequest(http.MethodDelete, "/api/trips/0", nil)
+	w = httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("Expected status 204, got %d", w.Code)
+	}
+
+	// Verify the trip is gone
+	req = httptest.NewRequest(http.MethodGet, "/api/trips", nil)
+	w = httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	var response map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if response["count"] != float64(0) {
+		t.Errorf("Expected count 0, got %v", response["count"])
+	}
+}
+
+func TestTripsDeleteInvalidIndex(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/trips/999", nil)
+	w := httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+}
+
+func TestExpensesUpdateEndpoint(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// First create an expense
+	expense := core.Expense{
+		Date:        "2024-12-18",
+		Amount:      25.50,
+		Description: "Test expense",
+	}
+
+	expenseJSON, _ := json.Marshal(expense)
+	req := httptest.NewRequest(http.MethodPost, "/api/expenses", bytes.NewBuffer(expenseJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.handleExpenses(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("Expected status 201, got %d", w.Code)
+	}
+
+	// Now update the expense
+	updatedExpense := core.Expense{
+		Date:        "2024-12-19",
+		Amount:      35.75,
+		Description: "Updated test expense",
+	}
+
+	updatedExpenseJSON, _ := json.Marshal(updatedExpense)
+	req = httptest.NewRequest(http.MethodPut, "/api/expenses/0", bytes.NewBuffer(updatedExpenseJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	server.handleExpenses(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	var responseExpense core.Expense
+	if err := json.NewDecoder(w.Body).Decode(&responseExpense); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if responseExpense.Date != updatedExpense.Date {
+		t.Errorf("Expected date %s, got %s", updatedExpense.Date, responseExpense.Date)
+	}
+	if responseExpense.Amount != updatedExpense.Amount {
+		t.Errorf("Expected amount %f, got %f", updatedExpense.Amount, responseExpense.Amount)
+	}
+	if responseExpense.Description != updatedExpense.Description {
+		t.Errorf("Expected description %s, got %s", updatedExpense.Description, responseExpense.Description)
+	}
+}
+
+func TestExpensesUpdateInvalidIndex(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	expense := core.Expense{
+		Date:        "2024-12-18",
+		Amount:      25.50,
+		Description: "Test expense",
+	}
+
+	expenseJSON, _ := json.Marshal(expense)
+	req := httptest.NewRequest(http.MethodPut, "/api/expenses/999", bytes.NewBuffer(expenseJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.handleExpenses(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+}
+
+func TestExpensesDeleteEndpoint(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	// First create an expense
+	expense := core.Expense{
+		Date:        "2024-12-18",
+		Amount:      25.50,
+		Description: "Test expense",
+	}
+
+	expenseJSON, _ := json.Marshal(expense)
+	req := httptest.NewRequest(http.MethodPost, "/api/expenses", bytes.NewBuffer(expenseJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.handleExpenses(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("Expected status 201, got %d", w.Code)
+	}
+
+	// Now delete the expense
+	req = httptest.NewRequest(http.MethodDelete, "/api/expenses/0", nil)
+	w = httptest.NewRecorder()
+	server.handleExpenses(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("Expected status 204, got %d", w.Code)
+	}
+
+	// Verify the expense is gone
+	req = httptest.NewRequest(http.MethodGet, "/api/expenses", nil)
+	w = httptest.NewRecorder()
+	server.handleExpenses(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	var response map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if response["count"] != float64(0) {
+		t.Errorf("Expected count 0, got %v", response["count"])
+	}
+}
+
+func TestExpensesDeleteInvalidIndex(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/expenses/999", nil)
+	w := httptest.NewRecorder()
+	server.handleExpenses(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+}
+
+func TestTripsUpdateNoIndex(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	trip := core.Trip{
+		Date:        "2024-12-18",
+		Origin:      "Test Home",
+		Destination: "Test Work",
+		Miles:       5.0,
+		Type:        "single",
+	}
+
+	tripJSON, _ := json.Marshal(trip)
+	req := httptest.NewRequest(http.MethodPut, "/api/trips/", bytes.NewBuffer(tripJSON))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+}
+
+func TestTripsDeleteNoIndex(t *testing.T) {
+	server, _, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/trips/", nil)
+	w := httptest.NewRecorder()
+	server.handleTrips(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
 	}
 }

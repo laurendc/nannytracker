@@ -31,7 +31,9 @@ go/
 # Project documentation
 CONTEXT.md
 PHASE1_IMPLEMENTATION_SUMMARY.md
+PHASE2_IMPLEMENTATION_SUMMARY.md
 TUI_UX_ANALYSIS.md
+WEB_APPLICATION_ANALYSIS.md
 
 # Dependencies
 node_modules/

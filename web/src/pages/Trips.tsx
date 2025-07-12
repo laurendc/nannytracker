@@ -7,7 +7,7 @@ import type { Trip } from '../types'
 
 export default function Trips() {
   const [isAddingTrip, setIsAddingTrip] = useState(false)
-  const [editingTrip, setEditingTrip] = useState<Trip | null>(null)
+  const [editingTrip, setEditingTrip] = useState<{trip: Trip, index: number} | null>(null)
   const [newTrip, setNewTrip] = useState<Partial<Trip>>({
     date: '',
     origin: '',
@@ -31,6 +31,21 @@ export default function Trips() {
     },
   })
 
+  const updateTripMutation = useMutation({
+    mutationFn: ({ index, trip }: { index: number, trip: Trip }) => tripsApi.update(index, trip),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trips'] })
+      setEditingTrip(null)
+    },
+  })
+
+  const deleteTripMutation = useMutation({
+    mutationFn: (index: number) => tripsApi.delete(index),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trips'] })
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (newTrip.date && newTrip.origin && newTrip.destination && newTrip.type) {
@@ -40,6 +55,22 @@ export default function Trips() {
         destination: newTrip.destination,
         type: newTrip.type,
       })
+    }
+  }
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (editingTrip) {
+      updateTripMutation.mutate({
+        index: editingTrip.index,
+        trip: editingTrip.trip
+      })
+    }
+  }
+
+  const handleDelete = (index: number) => {
+    if (confirm('Are you sure you want to delete this trip?')) {
+      deleteTripMutation.mutate(index)
     }
   }
 
@@ -139,7 +170,7 @@ export default function Trips() {
               />
             </div>
             <div className="flex gap-3">
-              <button type="submit" className="btn btn-primary">
+              <button type="submit" className="btn btn-primary" disabled={createTripMutation.isLoading}>
                 {createTripMutation.isLoading ? 'Adding...' : 'Add Trip'}
               </button>
               <button
@@ -148,6 +179,110 @@ export default function Trips() {
                   setIsAddingTrip(false)
                   setNewTrip({ date: '', origin: '', destination: '', type: 'single' })
                 }}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Trip Form */}
+      {editingTrip && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Trip</h2>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={editingTrip.trip.date}
+                  onChange={(e) => setEditingTrip({
+                    ...editingTrip,
+                    trip: { ...editingTrip.trip, date: e.target.value }
+                  })}
+                  className="input"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Type
+                </label>
+                <select
+                  value={editingTrip.trip.type}
+                  onChange={(e) => setEditingTrip({
+                    ...editingTrip,
+                    trip: { ...editingTrip.trip, type: e.target.value as 'single' | 'round' }
+                  })}
+                  className="input"
+                  required
+                >
+                  <option value="single">Single Trip</option>
+                  <option value="round">Round Trip</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Origin
+              </label>
+              <input
+                type="text"
+                value={editingTrip.trip.origin}
+                onChange={(e) => setEditingTrip({
+                  ...editingTrip,
+                  trip: { ...editingTrip.trip, origin: e.target.value }
+                })}
+                className="input"
+                placeholder="Enter origin address"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Destination
+              </label>
+              <input
+                type="text"
+                value={editingTrip.trip.destination}
+                onChange={(e) => setEditingTrip({
+                  ...editingTrip,
+                  trip: { ...editingTrip.trip, destination: e.target.value }
+                })}
+                className="input"
+                placeholder="Enter destination address"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Miles
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                value={editingTrip.trip.miles}
+                onChange={(e) => setEditingTrip({
+                  ...editingTrip,
+                  trip: { ...editingTrip.trip, miles: parseFloat(e.target.value) || 0 }
+                })}
+                className="input"
+                placeholder="Enter miles"
+                required
+              />
+            </div>
+            <div className="flex gap-3">
+              <button type="submit" className="btn btn-primary" disabled={updateTripMutation.isLoading}>
+                {updateTripMutation.isLoading ? 'Updating...' : 'Update Trip'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingTrip(null)}
                 className="btn btn-secondary"
               >
                 Cancel
@@ -187,18 +322,16 @@ export default function Trips() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => setEditingTrip(trip)}
+                    onClick={() => setEditingTrip({ trip, index })}
                     className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                    disabled={updateTripMutation.isLoading}
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm('Are you sure you want to delete this trip?')) {
-                        // TODO: Implement delete functionality
-                      }
-                    }}
+                    onClick={() => handleDelete(index)}
                     className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    disabled={deleteTripMutation.isLoading}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

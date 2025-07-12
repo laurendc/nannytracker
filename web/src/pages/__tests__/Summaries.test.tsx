@@ -1,12 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { vi } from 'vitest'
 import Summaries from '../Summaries'
 
 // Mock the API calls
-jest.mock('../../lib/api', () => ({
+vi.mock('../../lib/api', () => ({
   summariesApi: {
-    getAll: jest.fn(),
+    getAll: vi.fn(),
   },
 }))
 
@@ -68,12 +69,12 @@ const mockSummaries = [
 
 describe('Summaries', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('renders summaries page title and description', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(summariesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -101,7 +102,7 @@ describe('Summaries', () => {
 
   it('displays weekly summaries when data is loaded', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue(mockSummaries)
+    vi.mocked(summariesApi.getAll).mockResolvedValue(mockSummaries)
 
     render(
       <TestWrapper>
@@ -116,7 +117,7 @@ describe('Summaries', () => {
 
   it('shows empty state when no summaries exist', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(summariesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -132,7 +133,7 @@ describe('Summaries', () => {
 
   it('displays summary information correctly when data is available', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue(mockSummaries)
+    vi.mocked(summariesApi.getAll).mockResolvedValue(mockSummaries)
 
     render(
       <TestWrapper>
@@ -153,7 +154,7 @@ describe('Summaries', () => {
 
   it('shows summary details when expanded', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue(mockSummaries)
+    vi.mocked(summariesApi.getAll).mockResolvedValue(mockSummaries)
 
     render(
       <TestWrapper>
@@ -169,7 +170,7 @@ describe('Summaries', () => {
 
   it('displays trip details in summary', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue(mockSummaries)
+    vi.mocked(summariesApi.getAll).mockResolvedValue(mockSummaries)
 
     render(
       <TestWrapper>
@@ -185,7 +186,7 @@ describe('Summaries', () => {
 
   it('displays expense details in summary', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue(mockSummaries)
+    vi.mocked(summariesApi.getAll).mockResolvedValue(mockSummaries)
 
     render(
       <TestWrapper>
@@ -201,7 +202,7 @@ describe('Summaries', () => {
 
   it('shows correct mileage calculations', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue(mockSummaries)
+    vi.mocked(summariesApi.getAll).mockResolvedValue(mockSummaries)
 
     render(
       <TestWrapper>
@@ -218,7 +219,7 @@ describe('Summaries', () => {
 
   it('shows correct expense totals', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue(mockSummaries)
+    vi.mocked(summariesApi.getAll).mockResolvedValue(mockSummaries)
 
     render(
       <TestWrapper>
@@ -233,7 +234,7 @@ describe('Summaries', () => {
 
   it('displays reimbursement calculation', async () => {
     const { summariesApi } = await import('../../lib/api')
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue(mockSummaries)
+    vi.mocked(summariesApi.getAll).mockResolvedValue(mockSummaries)
 
     render(
       <TestWrapper>

@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom'
+import { vi } from 'vitest'
 import { server } from './mocks/server'
 
 // Mock ResizeObserver for Recharts
@@ -8,10 +9,10 @@ declare global {
   }
 }
 
-window.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
+window.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
 })) as any
 
 // Establish API mocking before all tests

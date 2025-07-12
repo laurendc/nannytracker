@@ -8,17 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Phase 2 Complete**: Full CRUD operations for web application
+- PUT and DELETE API endpoints for trips and expenses
+- Complete edit functionality for trips with all fields (date, origin, destination, miles, type)
+- Complete edit functionality for expenses with all fields (date, amount, description)
+- Delete operations with user confirmation dialogs
+- Index-based item management for consistent API operations
+- Comprehensive error handling and loading states
+- React Query mutations for optimistic updates
+- 10+ new backend tests covering all CRUD operations
+- Enhanced frontend test coverage (75 tests passing)
 - Version management system
 - Release automation with GitHub Actions
 - Makefile for common development tasks
 - Version endpoints for both TUI and web applications
 
 ### Changed
+- API client updated to use numeric indices instead of string IDs
+- Backend routing enhanced to handle `/api/trips/{index}` and `/api/expenses/{index}` patterns
+- Frontend forms now support full editing workflows with proper state management
+- CORS headers updated to support PUT and DELETE methods
 - Improved environment file loading to work from any subdirectory
 - Enhanced test coverage for configuration package
 
 ### Fixed
 - Environment file path resolution when running from subdirectories
+- Fixed one failing backend test by changing PUT to PATCH for unsupported method testing
+- Proper URL path parsing for numeric indices in API endpoints
 
 ## [0.1.0] - 2024-01-XX
 

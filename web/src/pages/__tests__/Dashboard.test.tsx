@@ -1,11 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { vi } from 'vitest'
 import Dashboard from '../Dashboard'
 
 // Mock date-fns format function
-jest.mock('date-fns', () => ({
-  format: jest.fn((date, formatStr) => {
+vi.mock('date-fns', () => ({
+  format: vi.fn((date, formatStr) => {
     // Return predictable date strings for testing
     if (formatStr === 'MMM d') {
       return 'Dec 15'
@@ -18,15 +19,15 @@ jest.mock('date-fns', () => ({
 }))
 
 // Mock the API calls
-jest.mock('../../lib/api', () => ({
+vi.mock('../../lib/api', () => ({
   tripsApi: {
-    getAll: jest.fn(),
+    getAll: vi.fn(),
   },
   expensesApi: {
-    getAll: jest.fn(),
+    getAll: vi.fn(),
   },
   summariesApi: {
-    getAll: jest.fn(),
+    getAll: vi.fn(),
   },
 }))
 
@@ -95,9 +96,9 @@ const mockSummaries = [
 describe('Dashboard', () => {
   beforeEach(async () => {
     const { tripsApi, expensesApi, summariesApi } = await import('../../lib/api')
-    ;(tripsApi.getAll as jest.Mock).mockResolvedValue(mockTrips)
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue(mockExpenses)
-    ;(summariesApi.getAll as jest.Mock).mockResolvedValue(mockSummaries)
+    vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
+    vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
+    vi.mocked(summariesApi.getAll).mockResolvedValue(mockSummaries)
   })
 
   it('renders dashboard title and description', async () => {

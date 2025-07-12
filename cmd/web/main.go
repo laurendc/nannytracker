@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/laurendc/nannytracker/pkg/config"
@@ -74,6 +76,10 @@ func (s *Server) handleTrips(w http.ResponseWriter, r *http.Request) {
 		s.getTrips(w, r)
 	case http.MethodPost:
 		s.createTrip(w, r)
+	case http.MethodPut:
+		s.updateTrip(w, r)
+	case http.MethodDelete:
+		s.deleteTrip(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -131,6 +137,93 @@ func (s *Server) createTrip(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) updateTrip(w http.ResponseWriter, r *http.Request) {
+	// Extract index from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/trips/")
+	if path == "" {
+		http.Error(w, "Trip index is required", http.StatusBadRequest)
+		return
+	}
+
+	index, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "Invalid trip index", http.StatusBadRequest)
+		return
+	}
+
+	var trip core.Trip
+	if err := json.NewDecoder(r.Body).Decode(&trip); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Validate the trip
+	if err := trip.Validate(); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid trip data: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Load existing data
+	data, err := s.store.LoadData()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to load data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Update the trip
+	if err := data.EditTrip(index, trip); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update trip: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Save the updated data
+	if err := s.store.SaveData(data); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to save data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(trip); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (s *Server) deleteTrip(w http.ResponseWriter, r *http.Request) {
+	// Extract index from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/trips/")
+	if path == "" {
+		http.Error(w, "Trip index is required", http.StatusBadRequest)
+		return
+	}
+
+	index, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "Invalid trip index", http.StatusBadRequest)
+		return
+	}
+
+	// Load existing data
+	data, err := s.store.LoadData()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to load data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Delete the trip
+	if err := data.DeleteTrip(index); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to delete trip: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Save the updated data
+	if err := s.store.SaveData(data); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to save data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handleExpenses(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -148,6 +241,10 @@ func (s *Server) handleExpenses(w http.ResponseWriter, r *http.Request) {
 		s.getExpenses(w, r)
 	case http.MethodPost:
 		s.createExpense(w, r)
+	case http.MethodPut:
+		s.updateExpense(w, r)
+	case http.MethodDelete:
+		s.deleteExpense(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -203,6 +300,93 @@ func (s *Server) createExpense(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (s *Server) updateExpense(w http.ResponseWriter, r *http.Request) {
+	// Extract index from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/expenses/")
+	if path == "" {
+		http.Error(w, "Expense index is required", http.StatusBadRequest)
+		return
+	}
+
+	index, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "Invalid expense index", http.StatusBadRequest)
+		return
+	}
+
+	var expense core.Expense
+	if err := json.NewDecoder(r.Body).Decode(&expense); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Validate the expense
+	if err := expense.Validate(); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid expense data: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Load existing data
+	data, err := s.store.LoadData()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to load data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Update the expense
+	if err := data.EditExpense(index, expense); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update expense: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Save the updated data
+	if err := s.store.SaveData(data); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to save data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(expense); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (s *Server) deleteExpense(w http.ResponseWriter, r *http.Request) {
+	// Extract index from URL path
+	path := strings.TrimPrefix(r.URL.Path, "/api/expenses/")
+	if path == "" {
+		http.Error(w, "Expense index is required", http.StatusBadRequest)
+		return
+	}
+
+	index, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "Invalid expense index", http.StatusBadRequest)
+		return
+	}
+
+	// Load existing data
+	data, err := s.store.LoadData()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to load data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Delete the expense
+	if err := data.DeleteExpense(index); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to delete expense: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Save the updated data
+	if err := s.store.SaveData(data); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to save data: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleWeeklySummaries(w http.ResponseWriter, r *http.Request) {
@@ -261,7 +445,9 @@ func main() {
 	http.HandleFunc("/health", server.handleHealth)
 	http.HandleFunc("/version", server.handleVersion)
 	http.HandleFunc("/api/trips", server.handleTrips)
+	http.HandleFunc("/api/trips/", server.handleTrips) // Handle /api/trips/{index}
 	http.HandleFunc("/api/expenses", server.handleExpenses)
+	http.HandleFunc("/api/expenses/", server.handleExpenses) // Handle /api/expenses/{index}
 	http.HandleFunc("/api/summaries", server.handleWeeklySummaries)
 
 	// Get port from environment or use default
@@ -276,8 +462,12 @@ func main() {
 	log.Printf("  GET  /version")
 	log.Printf("  GET  /api/trips")
 	log.Printf("  POST /api/trips")
+	log.Printf("  PUT  /api/trips/{index}")
+	log.Printf("  DELETE /api/trips/{index}")
 	log.Printf("  GET  /api/expenses")
 	log.Printf("  POST /api/expenses")
+	log.Printf("  PUT  /api/expenses/{index}")
+	log.Printf("  DELETE /api/expenses/{index}")
 	log.Printf("  GET  /api/summaries")
 
 	srv := &http.Server{
