@@ -91,7 +91,7 @@ test-backend:
 # Run frontend (web) tests only
 test-frontend:
 	@echo "Running frontend (web) tests..."
-	cd web && npm install --no-audit --no-fund && npm test -- --watchAll=false
+	cd web && npm install --no-audit --no-fund && npm test -- --run
 
 # Clean build artifacts
 clean:

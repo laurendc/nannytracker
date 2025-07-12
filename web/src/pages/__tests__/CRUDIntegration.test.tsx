@@ -27,8 +27,16 @@ vi.mock('../../lib/api', () => ({
 const TestWrapper = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
+      queries: { 
+        retry: false,
+        staleTime: 0,
+        cacheTime: 0,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+      },
+      mutations: { 
+        retry: false,
+      },
     },
   })
 
@@ -253,6 +261,11 @@ describe('CRUD Integration Tests', () => {
         expect(screen.getByText('Lunch')).toBeInTheDocument()
       })
 
+      // Wait for Add Expense button to be available
+      await waitFor(() => {
+        expect(screen.getByText('Add Expense')).toBeInTheDocument()
+      })
+
       // CREATE - add new expense
       const addButton = screen.getByText('Add Expense')
       await user.click(addButton)
@@ -349,6 +362,11 @@ describe('CRUD Integration Tests', () => {
           <Expenses />
         </TestWrapper>
       )
+
+      // Wait for component to finish loading and render the Add Expense button
+      await waitFor(() => {
+        expect(screen.getByText('All Expenses')).toBeInTheDocument()
+      })
 
       const addButton = screen.getByText('Add Expense')
       await user.click(addButton)
