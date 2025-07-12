@@ -29,7 +29,9 @@ go/
 .env
 
 # Project documentation
-PROJECT_STATUS.md
+CONTEXT.md
+PHASE1_IMPLEMENTATION_SUMMARY.md
+TUI_UX_ANALYSIS.md
 
 # Dependencies
 node_modules/
