@@ -47,7 +47,7 @@ export default function Expenses() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (newExpense.date && newExpense.amount && newExpense.description) {
+    if (newExpense.date && newExpense.amount != null && newExpense.amount > 0 && newExpense.description) {
       createExpenseMutation.mutate({
         date: newExpense.date,
         amount: newExpense.amount,
