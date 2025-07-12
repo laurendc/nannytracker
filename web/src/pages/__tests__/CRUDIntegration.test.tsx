@@ -171,15 +171,9 @@ describe('CRUD Integration Tests', () => {
       await user.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByText('Are you sure you want to delete this trip?')).toBeInTheDocument()
+        expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this trip?')
+        expect(tripsApi.delete).toHaveBeenCalledWith(0)
       })
-
-      // Confirm deletion
-      const confirmButton = screen.getByText('Delete')
-      await user.click(confirmButton)
-
-      // Verify delete API was called
-      expect(tripsApi.delete).toHaveBeenCalledWith(0)
     })
 
     it('handles error scenarios gracefully', async () => {
@@ -341,15 +335,9 @@ describe('CRUD Integration Tests', () => {
       await user.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByText('Are you sure you want to delete this expense?')).toBeInTheDocument()
+        expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this expense?')
+        expect(expensesApi.delete).toHaveBeenCalledWith(0)
       })
-
-      // Confirm deletion
-      const confirmButton = screen.getByText('Delete')
-      await user.click(confirmButton)
-
-      // Verify delete API was called
-      expect(expensesApi.delete).toHaveBeenCalledWith(0)
     })
 
     it('validates form data before submission', async () => {
