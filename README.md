@@ -6,7 +6,7 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
 
 **Terminal Application**: ✅ **Production Ready** - A fully functional terminal-based application with a rich TUI interface.
 
-**Web Application**: 🚧 **In Development** - A modern React-based web interface is currently being developed alongside the terminal application.
+**Web Application**: 🚧 **In Development** - A modern React-based web interface with **Phase 2 Complete** (Full CRUD Operations). Currently implementing mobile-first design patterns.
 
 ## Features
 
@@ -21,13 +21,29 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
 - **Data Validation**: Comprehensive validation for all entries
 - **Persistent Storage**: JSON-based data storage with backup capabilities
 
-### Web Application (In Development)
+### Web Application (Phase 2 Complete - Full CRUD Operations)
 - **Modern React Interface**: Built with React 18, TypeScript, Tailwind CSS
-- **Responsive Design**: Mobile-first approach with beautiful UI
+- **Complete CRUD Operations**: ✅ Create, Read, Update, Delete for trips and expenses
 - **Real-time Data**: React Query for efficient data fetching and caching
 - **Dashboard**: Overview of trips, expenses, and weekly summaries
-- **Interactive Charts**: Data visualization with Recharts
-- **API Integration**: RESTful API backend for programmatic access
+- **Interactive Forms**: Full editing capabilities with validation and error handling
+- **Confirmation Dialogs**: User-friendly delete confirmations with proper UX
+- **API Integration**: RESTful API backend with full CRUD endpoint support
+
+**Phase 2 Features Implemented:**
+- ✅ Trip editing with all fields (date, origin, destination, miles, type)
+- ✅ Expense editing with all fields (date, amount, description)
+- ✅ Delete operations with confirmation dialogs
+- ✅ PUT/DELETE API endpoints for trips and expenses
+- ✅ Index-based item management for consistent operations
+- ✅ Optimistic updates with React Query mutations
+- ✅ Comprehensive error handling and user feedback
+
+**Next Phase - Mobile-First Design:**
+- 🚧 Responsive design optimization
+- 🚧 Touch-friendly interface elements
+- 🚧 Mobile navigation patterns
+- 🚧 Performance optimization for mobile devices
 
 ## Technical Architecture
 
@@ -36,7 +52,7 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
 - **REST API**: HTTP server providing JSON endpoints for web frontend
 - **File Storage**: JSON-based persistent storage with data validation
 - **Configuration**: Environment-based configuration with `.env` support
-- **Cross-platform**: Supports Linux, macOS, and Windows
+- **Cross-platform**: Supports Linux and macOS
 
 ### Frontend (React/TypeScript)
 - **Modern Stack**: React 18, TypeScript, Vite, Tailwind CSS
@@ -52,7 +68,6 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
 2. Download the appropriate binary for your platform:
    - **Linux**: `nannytracker-linux-amd64` or `nannytracker-linux-arm64`
    - **macOS**: `nannytracker-darwin-amd64` or `nannytracker-darwin-arm64`
-   - **Windows**: `nannytracker-windows-amd64.exe`
 
 3. Make the binary executable (Linux/macOS):
    ```bash
@@ -145,7 +160,7 @@ cd web && npm run build
 
 ### Web API
 
-The web server provides a REST API for programmatic access:
+The web server provides a comprehensive REST API with full CRUD operations:
 
 ```bash
 # Health check
@@ -154,15 +169,32 @@ curl http://localhost:8080/health
 # Version information
 curl http://localhost:8080/version
 
-# Get trips
-curl http://localhost:8080/api/trips
+# Trips API (Full CRUD)
+curl http://localhost:8080/api/trips                                    # GET all trips
+curl -X POST http://localhost:8080/api/trips -d '{"date":"2024-01-01","origin":"Home","destination":"Work","miles":10,"type":"single"}' # CREATE
+curl -X PUT http://localhost:8080/api/trips/0 -d '{"date":"2024-01-02","origin":"Home","destination":"Work","miles":12,"type":"single"}' # UPDATE
+curl -X DELETE http://localhost:8080/api/trips/0                        # DELETE
 
-# Get expenses
-curl http://localhost:8080/api/expenses
+# Expenses API (Full CRUD)
+curl http://localhost:8080/api/expenses                                  # GET all expenses
+curl -X POST http://localhost:8080/api/expenses -d '{"date":"2024-01-01","amount":25.50,"description":"Gas"}' # CREATE
+curl -X PUT http://localhost:8080/api/expenses/0 -d '{"date":"2024-01-02","amount":30.00,"description":"Parking"}' # UPDATE
+curl -X DELETE http://localhost:8080/api/expenses/0                     # DELETE
 
-# Get weekly summaries
-curl http://localhost:8080/api/summaries
+# Weekly summaries (read-only)
+curl http://localhost:8080/api/summaries                                # GET summaries
 ```
+
+**API Endpoints:**
+- `GET /api/trips` - List all trips
+- `POST /api/trips` - Create a new trip
+- `PUT /api/trips/{index}` - Update trip at index
+- `DELETE /api/trips/{index}` - Delete trip at index
+- `GET /api/expenses` - List all expenses
+- `POST /api/expenses` - Create a new expense
+- `PUT /api/expenses/{index}` - Update expense at index
+- `DELETE /api/expenses/{index}` - Delete expense at index
+- `GET /api/summaries` - Get weekly summaries (read-only)
 
 ## Development
 
@@ -335,15 +367,22 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## Roadmap
 
+### Current Phase - Mobile-First Implementation (Phase 1)
+- **Responsive Design**: Mobile-first approach with touch-optimized controls
+- **Navigation**: Mobile-friendly navigation patterns (bottom tabs, slide-out menus)
+- **Touch Interface**: Gesture-based interactions and mobile UX patterns
+- **Performance**: Optimize for mobile device constraints
+
 ### Short Term
-- Complete web frontend development
-- Add export functionality for reimbursement reports
-- Add monthly summaries
-- Add date range filtering for trips
+- Complete Phase 1 mobile-first implementation
+- Add export functionality for reimbursement reports (PDF/CSV)
+- Implement trip templates and recurring trips
+- Add advanced search and filtering capabilities
+- Bundle size optimization (currently 677KB)
 
 ### Long Term
-- Mobile-friendly web interface
+- Progressive Web App features (offline support, installation)
 - Cloud synchronization
 - Multi-user support
-- Data backup functionality
 - Advanced reporting and analytics
+- Data visualization enhancements

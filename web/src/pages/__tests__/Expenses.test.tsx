@@ -2,13 +2,16 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { vi } from 'vitest'
 import Expenses from '../Expenses'
 
 // Mock the API calls
-jest.mock('../../lib/api', () => ({
+vi.mock('../../lib/api', () => ({
   expensesApi: {
-    getAll: jest.fn(),
-    create: jest.fn(),
+    getAll: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
 }))
 
@@ -48,12 +51,12 @@ const mockExpenses = [
 
 describe('Expenses', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('renders expenses page title and description', async () => {
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -69,7 +72,7 @@ describe('Expenses', () => {
 
   it('shows add expense button', async () => {
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -84,7 +87,7 @@ describe('Expenses', () => {
 
   it('displays total expenses summary', async () => {
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -100,7 +103,7 @@ describe('Expenses', () => {
   it('opens add expense form when button is clicked', async () => {
     const user = userEvent.setup()
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -126,8 +129,8 @@ describe('Expenses', () => {
   it('allows form input and submission', async () => {
     const user = userEvent.setup()
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
-    ;(expensesApi.create as jest.Mock).mockResolvedValue({})
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
+    vi.mocked(expensesApi.create).mockResolvedValue({})
 
     render(
       <TestWrapper>
@@ -163,7 +166,7 @@ describe('Expenses', () => {
 
   it('displays expenses list when data is available', async () => {
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -178,7 +181,7 @@ describe('Expenses', () => {
 
   it('shows empty state when no expenses exist', async () => {
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -194,7 +197,7 @@ describe('Expenses', () => {
 
   it('displays expense information correctly', async () => {
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue(mockExpenses)
+    vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
 
     render(
       <TestWrapper>
@@ -210,7 +213,7 @@ describe('Expenses', () => {
 
   it('shows edit and delete buttons for each expense', async () => {
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue(mockExpenses)
+    vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
 
     render(
       <TestWrapper>
@@ -233,10 +236,189 @@ describe('Expenses', () => {
     })
   })
 
+  it('opens edit form when edit button is clicked', async () => {
+    const user = userEvent.setup()
+    const { expensesApi } = await import('../../lib/api')
+    vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
+
+    render(
+      <TestWrapper>
+        <Expenses />
+      </TestWrapper>
+    )
+
+    await waitFor(() => {
+      const editButtons = screen.getAllByRole('button').filter(button => 
+        button.querySelector('svg') && button.className.includes('hover:text-gray-600')
+      )
+      expect(editButtons.length).toBeGreaterThan(0)
+    })
+
+    const editButton = screen.getAllByRole('button').filter(button => 
+      button.querySelector('svg') && button.className.includes('hover:text-gray-600')
+    )[0]
+    
+    await user.click(editButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit Expense')).toBeInTheDocument()
+    })
+  })
+
+  it('submits edit form with updated data', async () => {
+    const user = userEvent.setup()
+    const { expensesApi } = await import('../../lib/api')
+    vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
+    vi.mocked(expensesApi.update).mockResolvedValue({})
+
+    render(
+      <TestWrapper>
+        <Expenses />
+      </TestWrapper>
+    )
+
+    await waitFor(() => {
+      const editButtons = screen.getAllByRole('button').filter(button => 
+        button.querySelector('svg') && button.className.includes('hover:text-gray-600')
+      )
+      expect(editButtons.length).toBeGreaterThan(0)
+    })
+
+    const editButton = screen.getAllByRole('button').filter(button => 
+      button.querySelector('svg') && button.className.includes('hover:text-gray-600')
+    )[0]
+    
+    await user.click(editButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit Expense')).toBeInTheDocument()
+    })
+
+    // Find the description input and update it
+    const descriptionInput = screen.getByDisplayValue('Lunch')
+    await user.clear(descriptionInput)
+    await user.type(descriptionInput, 'Updated Lunch')
+
+    // Find and click the update button
+    const updateButton = screen.getByText('Update Expense')
+    await user.click(updateButton)
+
+    await waitFor(() => {
+      expect(expensesApi.update).toHaveBeenCalledWith(0, expect.objectContaining({
+        description: 'Updated Lunch',
+      }))
+    })
+  })
+
+  it('shows delete confirmation dialog when delete button is clicked', async () => {
+    const user = userEvent.setup()
+    const { expensesApi } = await import('../../lib/api')
+    vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
+
+    render(
+      <TestWrapper>
+        <Expenses />
+      </TestWrapper>
+    )
+
+    await waitFor(() => {
+      const deleteButtons = screen.getAllByRole('button').filter(button => 
+        button.querySelector('svg') && button.className.includes('hover:text-red-600')
+      )
+      expect(deleteButtons.length).toBeGreaterThan(0)
+    })
+
+    const deleteButton = screen.getAllByRole('button').filter(button => 
+      button.querySelector('svg') && button.className.includes('hover:text-red-600')
+    )[0]
+    
+    await user.click(deleteButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Are you sure you want to delete this expense?')).toBeInTheDocument()
+    })
+  })
+
+  it('confirms deletion and calls delete API', async () => {
+    const user = userEvent.setup()
+    const { expensesApi } = await import('../../lib/api')
+    vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
+    vi.mocked(expensesApi.delete).mockResolvedValue(undefined)
+
+    render(
+      <TestWrapper>
+        <Expenses />
+      </TestWrapper>
+    )
+
+    await waitFor(() => {
+      const deleteButtons = screen.getAllByRole('button').filter(button => 
+        button.querySelector('svg') && button.className.includes('hover:text-red-600')
+      )
+      expect(deleteButtons.length).toBeGreaterThan(0)
+    })
+
+    const deleteButton = screen.getAllByRole('button').filter(button => 
+      button.querySelector('svg') && button.className.includes('hover:text-red-600')
+    )[0]
+    
+    await user.click(deleteButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Are you sure you want to delete this expense?')).toBeInTheDocument()
+    })
+
+    const confirmButton = screen.getByText('Delete')
+    await user.click(confirmButton)
+
+    await waitFor(() => {
+      expect(expensesApi.delete).toHaveBeenCalledWith(0)
+    })
+  })
+
+  it('cancels deletion when cancel button is clicked', async () => {
+    const user = userEvent.setup()
+    const { expensesApi } = await import('../../lib/api')
+    vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
+    vi.mocked(expensesApi.delete).mockResolvedValue(undefined)
+
+    render(
+      <TestWrapper>
+        <Expenses />
+      </TestWrapper>
+    )
+
+    await waitFor(() => {
+      const deleteButtons = screen.getAllByRole('button').filter(button => 
+        button.querySelector('svg') && button.className.includes('hover:text-red-600')
+      )
+      expect(deleteButtons.length).toBeGreaterThan(0)
+    })
+
+    const deleteButton = screen.getAllByRole('button').filter(button => 
+      button.querySelector('svg') && button.className.includes('hover:text-red-600')
+    )[0]
+    
+    await user.click(deleteButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Are you sure you want to delete this expense?')).toBeInTheDocument()
+    })
+
+    const cancelButton = screen.getByText('Cancel')
+    await user.click(cancelButton)
+
+    await waitFor(() => {
+      expect(screen.queryByText('Are you sure you want to delete this expense?')).not.toBeInTheDocument()
+    })
+
+    expect(expensesApi.delete).not.toHaveBeenCalled()
+  })
+
   it('validates required form fields', async () => {
     const user = userEvent.setup()
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -264,7 +446,7 @@ describe('Expenses', () => {
   it('validates amount field is numeric', async () => {
     const user = userEvent.setup()
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -301,7 +483,7 @@ describe('Expenses', () => {
   it('allows canceling the add expense form', async () => {
     const user = userEvent.setup()
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue([])
+    vi.mocked(expensesApi.getAll).mockResolvedValue([])
 
     render(
       <TestWrapper>
@@ -327,7 +509,7 @@ describe('Expenses', () => {
 
   it('calculates total expenses correctly', async () => {
     const { expensesApi } = await import('../../lib/api')
-    ;(expensesApi.getAll as jest.Mock).mockResolvedValue(mockExpenses)
+    vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
 
     render(
       <TestWrapper>

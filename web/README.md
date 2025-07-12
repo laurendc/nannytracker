@@ -10,6 +10,7 @@ A modern React + TypeScript frontend for the NannyTracker mileage and expense tr
 - **Weekly Summaries**: View detailed weekly reports with charts
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 - **Real-time Data**: React Query for efficient data fetching and caching
+- **Complete CRUD Operations**: Full Create, Read, Update, Delete functionality
 
 ## Tech Stack
 
@@ -53,32 +54,44 @@ The built files will be in the `dist/` directory.
 
 ## Testing
 
+### Modern Testing with Vitest
+
+This project uses **Vitest** for testing, providing a fast, modern testing experience that integrates seamlessly with Vite.
+
+**Benefits of Vitest:**
+- 3-5x faster test execution than Jest
+- Unified tooling with Vite (same bundler for dev and testing)
+- Hot reload testing with instant feedback
+- Interactive test UI for better debugging
+- Smaller bundle size and fewer dependencies
+
 ### Running Tests
 
 ```bash
 # Run tests in watch mode
 npm test
 
-# Run tests with UI
-npm run test:ui
+# Run tests once
+npm run test:run
 
 # Run tests with coverage
 npm run test:coverage
 
-# Run tests once
-npm run test:run
+# Run tests with UI
+npm run test:ui
 ```
 
 ### Test Structure
 
 - **Unit Tests**: Test individual components and functions
 - **Integration Tests**: Test component interactions and API calls
-- **E2E Tests**: Test complete user workflows (future)
+- **API Tests**: Test API client methods and error handling
+- **CRUD Tests**: Test complete Create, Read, Update, Delete workflows
 
 ### Test Files
 
 - `src/components/__tests__/` - Component tests
-- `src/pages/__tests__/` - Page component tests
+- `src/pages/__tests__/` - Page component tests  
 - `src/lib/__tests__/` - API and utility tests
 - `src/test/` - Test setup and utilities
 
@@ -86,10 +99,11 @@ npm run test:run
 
 - Use React Testing Library for component testing
 - Test user interactions, not implementation details
-- Mock API calls with MSW
+- Mock API calls with MSW (Mock Service Worker)
 - Use semantic queries (getByRole, getByLabelText)
 - Test accessibility features
 - Write tests that resemble how users interact with the app
+- Use Vitest's `vi.mock()` for mocking dependencies
 
 ## Project Structure
 
@@ -111,7 +125,7 @@ web/
 │   ├── types/              # TypeScript type definitions
 │   │   └── index.ts        # Shared types
 │   ├── test/               # Test setup and utilities
-│   │   ├── setup.ts        # Test configuration
+│   │   ├── setup.ts        # Vitest configuration
 │   │   ├── utils/          # Test utilities
 │   │   └── mocks/          # API mocks
 │   ├── App.tsx             # Main app component
@@ -120,7 +134,7 @@ web/
 ├── public/                 # Static assets
 ├── dist/                   # Build output
 ├── package.json            # Dependencies and scripts
-├── vite.config.ts          # Vite configuration
+├── vite.config.ts          # Vite & Vitest configuration
 ├── tsconfig.json           # TypeScript configuration
 ├── tailwind.config.js      # Tailwind CSS configuration
 └── README.md               # This file
@@ -128,12 +142,21 @@ web/
 
 ## API Integration
 
-The frontend communicates with the Go backend API running on `localhost:8080`. The API endpoints are:
+The frontend communicates with the Go backend API running on `localhost:8080`. The API endpoints include:
 
+### Trip Management
 - `GET /api/trips` - Get all trips
 - `POST /api/trips` - Create a new trip
+- `PUT /api/trips/{index}` - Update trip at index
+- `DELETE /api/trips/{index}` - Delete trip at index
+
+### Expense Management
 - `GET /api/expenses` - Get all expenses
 - `POST /api/expenses` - Create a new expense
+- `PUT /api/expenses/{index}` - Update expense at index
+- `DELETE /api/expenses/{index}` - Delete expense at index
+
+### Reports & Health
 - `GET /api/summaries` - Get weekly summaries
 - `GET /api/health` - Health check
 
@@ -164,6 +187,13 @@ In development, API calls are mocked using MSW (Mock Service Worker) to provide 
 - Use React Query's caching capabilities
 - Optimize bundle size with code splitting
 
+### Testing Workflow
+
+- Write tests for new features using Vitest
+- Use `npm test` for watch mode during development
+- Run `npm run test:coverage` to check coverage
+- Use `npm run test:ui` for interactive debugging
+
 ## Deployment
 
 The frontend can be deployed to any static hosting service:
@@ -178,8 +208,8 @@ The frontend can be deployed to any static hosting service:
 
 ## Contributing
 
-1. Write tests for new features
-2. Ensure all tests pass
+1. Write tests for new features using Vitest
+2. Ensure all tests pass with `npm run test:run`
 3. Follow the existing code style
 4. Update documentation as needed
 
@@ -189,11 +219,13 @@ The frontend can be deployed to any static hosting service:
 
 - **API Connection Errors**: Ensure the Go backend is running on port 8080
 - **Build Errors**: Check TypeScript types and dependencies
-- **Test Failures**: Verify API mocks are working correctly
+- **Test Failures**: Verify API mocks are working correctly with Vitest
 
 ### Development Tips
 
 - Use the React DevTools for debugging
 - Check the browser console for errors
 - Use the Network tab to debug API calls
-- Use the React Query DevTools for state debugging 
+- Use the React Query DevTools for state debugging
+- Use Vitest UI (`npm run test:ui`) for interactive test debugging
+- Run tests in watch mode for instant feedback during development 

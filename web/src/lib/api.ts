@@ -20,13 +20,13 @@ export const tripsApi = {
     return response.data
   },
   
-  update: async (id: string, trip: Trip): Promise<Trip> => {
-    const response = await api.put<Trip>(`/trips/${id}`, trip)
+  update: async (index: number, trip: Trip): Promise<Trip> => {
+    const response = await api.put<Trip>(`/trips/${index}`, trip)
     return response.data
   },
   
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/trips/${id}`)
+  delete: async (index: number): Promise<void> => {
+    await api.delete(`/trips/${index}`)
   },
 }
 
@@ -42,13 +42,13 @@ export const expensesApi = {
     return response.data
   },
   
-  update: async (id: string, expense: Expense): Promise<Expense> => {
-    const response = await api.put<Expense>(`/expenses/${id}`, expense)
+  update: async (index: number, expense: Expense): Promise<Expense> => {
+    const response = await api.put<Expense>(`/expenses/${index}`, expense)
     return response.data
   },
   
-  delete: async (id: string): Promise<void> => {
-    await api.delete(`/expenses/${id}`)
+  delete: async (index: number): Promise<void> => {
+    await api.delete(`/expenses/${index}`)
   },
 }
 
