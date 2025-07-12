@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -12,22 +13,37 @@ import (
 	"time"
 
 	"github.com/laurendc/nannytracker/pkg/config"
-	core "github.com/laurendc/nannytracker/pkg/core"
+	model "github.com/laurendc/nannytracker/pkg/core"
+	"github.com/laurendc/nannytracker/pkg/core/maps"
 	"github.com/laurendc/nannytracker/pkg/core/storage"
 	"github.com/laurendc/nannytracker/pkg/version"
 )
 
 type Server struct {
-	store *storage.FileStorage
-	cfg   *config.Config
+	store      *storage.FileStorage
+	cfg        *config.Config
+	mapsClient maps.DistanceCalculator
 }
 
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.Config) (*Server, error) {
 	store := storage.New(cfg.DataPath())
-	return &Server{
-		store: store,
-		cfg:   cfg,
+
+	// Initialize Google Maps client
+	var mapsClient maps.DistanceCalculator
+	realClient, err := maps.NewClient()
+	if err != nil {
+		// Fall back to mock client if Google Maps API is not available
+		log.Printf("Google Maps API not available, using mock client: %v", err)
+		mapsClient = maps.NewMockClient()
+	} else {
+		mapsClient = realClient
 	}
+
+	return &Server{
+		store:      store,
+		cfg:        cfg,
+		mapsClient: mapsClient,
+	}, nil
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -102,13 +118,58 @@ func (s *Server) getTrips(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) createTrip(w http.ResponseWriter, r *http.Request) {
-	var trip core.Trip
-	if err := json.NewDecoder(r.Body).Decode(&trip); err != nil {
+	// Create a struct for the incoming trip data without miles
+	var tripData struct {
+		Date        string `json:"date"`
+		Origin      string `json:"origin"`
+		Destination string `json:"destination"`
+		Type        string `json:"type"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&tripData); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	// Validate the trip
+	// Basic validation of required fields
+	if tripData.Date == "" {
+		http.Error(w, "Date is required", http.StatusBadRequest)
+		return
+	}
+	if tripData.Origin == "" {
+		http.Error(w, "Origin is required", http.StatusBadRequest)
+		return
+	}
+	if tripData.Destination == "" {
+		http.Error(w, "Destination is required", http.StatusBadRequest)
+		return
+	}
+	if tripData.Type == "" {
+		http.Error(w, "Type is required", http.StatusBadRequest)
+		return
+	}
+	if tripData.Type != "single" && tripData.Type != "round" {
+		http.Error(w, "Type must be 'single' or 'round'", http.StatusBadRequest)
+		return
+	}
+
+	// Calculate miles using Google Maps API
+	distance, err := s.mapsClient.CalculateDistance(context.Background(), tripData.Origin, tripData.Destination)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to calculate distance: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Create the complete trip with calculated miles
+	trip := model.Trip{
+		Date:        tripData.Date,
+		Origin:      tripData.Origin,
+		Destination: tripData.Destination,
+		Type:        tripData.Type,
+		Miles:       distance,
+	}
+
+	// Validate the complete trip
 	if err := trip.Validate(); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid trip data: %v", err), http.StatusBadRequest)
 		return
@@ -151,7 +212,7 @@ func (s *Server) updateTrip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var trip core.Trip
+	var trip model.Trip
 	if err := json.NewDecoder(r.Body).Decode(&trip); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
@@ -267,7 +328,7 @@ func (s *Server) getExpenses(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) createExpense(w http.ResponseWriter, r *http.Request) {
-	var expense core.Expense
+	var expense model.Expense
 	if err := json.NewDecoder(r.Body).Decode(&expense); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
@@ -316,7 +377,7 @@ func (s *Server) updateExpense(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var expense core.Expense
+	var expense model.Expense
 	if err := json.NewDecoder(r.Body).Decode(&expense); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
@@ -405,7 +466,7 @@ func (s *Server) handleWeeklySummaries(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Calculate weekly summaries
-	summaries := core.CalculateWeeklySummaries(data.Trips, data.Expenses, s.cfg.RatePerMile)
+	summaries := model.CalculateWeeklySummaries(data.Trips, data.Expenses, s.cfg.RatePerMile)
 
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"summaries": summaries,
@@ -439,7 +500,10 @@ func main() {
 	}
 
 	// Create server
-	server := NewServer(cfg)
+	server, err := NewServer(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create server: %v", err)
+	}
 
 	// Set up routes
 	http.HandleFunc("/health", server.handleHealth)

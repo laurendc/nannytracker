@@ -47,10 +47,11 @@ export default function Expenses() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (newExpense.date && newExpense.amount != null && newExpense.amount > 0 && newExpense.description) {
+    const amount = newExpense.amount || 0
+    if (newExpense.date && amount > 0 && newExpense.description) {
       createExpenseMutation.mutate({
         date: newExpense.date,
-        amount: newExpense.amount,
+        amount: amount,
         description: newExpense.description,
       })
     }
@@ -149,8 +150,12 @@ export default function Expenses() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={newExpense.amount}
-                  onChange={(e) => setNewExpense({ ...newExpense, amount: parseFloat(e.target.value) || 0 })}
+                  value={newExpense.amount === 0 ? '' : newExpense.amount}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const numValue = value === '' ? 0 : parseFloat(value)
+                    setNewExpense({ ...newExpense, amount: isNaN(numValue) ? 0 : numValue })
+                  }}
                   className="input"
                   placeholder="0.00"
                   required
@@ -218,11 +223,15 @@ export default function Expenses() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={editingExpense.expense.amount}
-                  onChange={(e) => setEditingExpense({
-                    ...editingExpense,
-                    expense: { ...editingExpense.expense, amount: parseFloat(e.target.value) || 0 }
-                  })}
+                  value={editingExpense.expense.amount === 0 ? '' : editingExpense.expense.amount}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const numValue = value === '' ? 0 : parseFloat(value)
+                    setEditingExpense({
+                      ...editingExpense,
+                      expense: { ...editingExpense.expense, amount: isNaN(numValue) ? 0 : numValue }
+                    })
+                  }}
                   className="input"
                   placeholder="0.00"
                   required

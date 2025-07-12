@@ -8,6 +8,14 @@ const api = axios.create({
   },
 })
 
+// Type for trip creation (without miles - calculated by backend)
+export type TripCreationData = {
+  date: string
+  origin: string
+  destination: string
+  type: 'single' | 'round'
+}
+
 // Trips API
 export const tripsApi = {
   getAll: async (): Promise<Trip[]> => {
@@ -15,7 +23,7 @@ export const tripsApi = {
     return response.data.trips
   },
   
-  create: async (trip: Omit<Trip, 'miles'>): Promise<Trip> => {
+  create: async (trip: TripCreationData): Promise<Trip> => {
     const response = await api.post<Trip>('/trips', trip)
     return response.data
   },

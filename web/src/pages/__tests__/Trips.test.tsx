@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -105,7 +105,9 @@ describe('Trips', () => {
     })
 
     const addButton = screen.getByText('Add Trip')
-    await user.click(addButton)
+    await act(async () => {
+      await user.click(addButton)
+    })
 
     expect(screen.getByText('Add New Trip')).toBeInTheDocument()
     const emptyInputs = screen.getAllByDisplayValue('')
@@ -138,7 +140,9 @@ describe('Trips', () => {
     })
 
     const addButton = screen.getByText('Add Trip')
-    await user.click(addButton)
+    await act(async () => {
+      await user.click(addButton)
+    })
 
     const emptyInputs = screen.getAllByDisplayValue('')
     const dateInput = emptyInputs[0]
