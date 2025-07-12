@@ -51,7 +51,6 @@ describe('CRUD Integration Tests', () => {
       const user = userEvent.setup()
       const mockTrips = [
         {
-          id: 1,
           date: '2024-12-20',
           origin: 'Home',
           destination: 'Work',
@@ -63,7 +62,6 @@ describe('CRUD Integration Tests', () => {
       // Mock API responses
       vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
       vi.mocked(tripsApi.create).mockResolvedValue({
-        id: 2,
         date: '2024-12-21',
         origin: 'Home',
         destination: 'Store',
@@ -71,7 +69,6 @@ describe('CRUD Integration Tests', () => {
         miles: 10.0,
       })
       vi.mocked(tripsApi.update).mockResolvedValue({
-        id: 1,
         date: '2024-12-20',
         origin: 'Updated Home',
         destination: 'Updated Work',
@@ -225,7 +222,6 @@ describe('CRUD Integration Tests', () => {
       const user = userEvent.setup()
       const mockExpenses = [
         {
-          id: '1',
           date: '2024-12-18',
           amount: 15.50,
           description: 'Lunch',
@@ -235,13 +231,11 @@ describe('CRUD Integration Tests', () => {
       // Mock API responses
       vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
       vi.mocked(expensesApi.create).mockResolvedValue({
-        id: '2',
         date: '2024-12-19',
         amount: 8.75,
         description: 'Coffee',
       })
       vi.mocked(expensesApi.update).mockResolvedValue({
-        id: '1',
         date: '2024-12-18',
         amount: 25.00,
         description: 'Updated Lunch',
@@ -344,7 +338,11 @@ describe('CRUD Integration Tests', () => {
       const user = userEvent.setup()
       
       vi.mocked(expensesApi.getAll).mockResolvedValue([])
-      vi.mocked(expensesApi.create).mockResolvedValue({})
+      vi.mocked(expensesApi.create).mockResolvedValue({
+        date: '2024-12-19',
+        amount: 8.75,
+        description: 'Test',
+      })
 
       render(
         <TestWrapper>
@@ -389,7 +387,6 @@ describe('CRUD Integration Tests', () => {
       // Mock both trips and expenses data
       vi.mocked(tripsApi.getAll).mockResolvedValue([
         {
-          id: 1,
           date: '2024-12-20',
           origin: 'Home',
           destination: 'Work',
@@ -400,7 +397,6 @@ describe('CRUD Integration Tests', () => {
       
       vi.mocked(expensesApi.getAll).mockResolvedValue([
         {
-          id: '1',
           date: '2024-12-20',
           amount: 15.50,
           description: 'Lunch',
