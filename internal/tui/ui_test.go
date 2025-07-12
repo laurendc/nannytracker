@@ -2432,3 +2432,208 @@ func TestRenderContextualControls(t *testing.T) {
 		t.Error("Expected blank line after NAVIGATION section")
 	}
 }
+
+// TestHelpSystemFunctionality tests the Phase 2 help system
+func TestHelpSystemFunctionality(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test initial state (help not visible)
+	if uiModel.HelpVisible {
+		t.Error("Help should not be visible initially")
+	}
+	if uiModel.HelpLevel != 0 {
+		t.Errorf("Expected help level to be 0, got %d", uiModel.HelpLevel)
+	}
+
+	// Test F1 key (Quick Help)
+	updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyF1})
+	uiModel = updatedModel.(*Model)
+	if !uiModel.HelpVisible {
+		t.Error("Help should be visible after F1")
+	}
+	if uiModel.HelpLevel != 1 {
+		t.Errorf("Expected help level to be 1, got %d", uiModel.HelpLevel)
+	}
+
+	// Test F2 key (Detailed Help)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyF2})
+	uiModel = updatedModel.(*Model)
+	if !uiModel.HelpVisible {
+		t.Error("Help should be visible after F2")
+	}
+	if uiModel.HelpLevel != 2 {
+		t.Errorf("Expected help level to be 2, got %d", uiModel.HelpLevel)
+	}
+
+	// Test F3 key (Advanced Help)
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyF3})
+	uiModel = updatedModel.(*Model)
+	if !uiModel.HelpVisible {
+		t.Error("Help should be visible after F3")
+	}
+	if uiModel.HelpLevel != 3 {
+		t.Errorf("Expected help level to be 3, got %d", uiModel.HelpLevel)
+	}
+
+	// Test Esc key to close help
+	updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	uiModel = updatedModel.(*Model)
+	if uiModel.HelpVisible {
+		t.Error("Help should not be visible after Esc")
+	}
+}
+
+func TestHelpContentGeneration(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test help content for different tabs and levels
+	tabs := []int{TabWeeklySummaries, TabTrips, TabExpenses, TabTemplates}
+	levels := []int{1, 2, 3}
+
+	for _, tab := range tabs {
+		for _, level := range levels {
+			uiModel.ActiveTab = tab
+			uiModel.HelpLevel = level
+
+			content := uiModel.getHelpContent()
+
+			// Verify content is not empty
+			if content == "" {
+				t.Errorf("Help content should not be empty for tab %d, level %d", tab, level)
+			}
+
+			// Verify level-specific content
+			switch level {
+			case 1:
+				if !strings.Contains(content, "Quick Help [F1]") {
+					t.Errorf("Quick help should contain F1 indicator for tab %d", tab)
+				}
+			case 2:
+				if !strings.Contains(content, "Detailed Help [F2]") {
+					t.Errorf("Detailed help should contain F2 indicator for tab %d", tab)
+				}
+			case 3:
+				if !strings.Contains(content, "Advanced Help [F3]") {
+					t.Errorf("Advanced help should contain F3 indicator for tab %d", tab)
+				}
+				if !strings.Contains(content, "DEVELOPER TOOLS") {
+					t.Errorf("Advanced help should contain developer tools for tab %d", tab)
+				}
+			}
+
+			// Verify common navigation is always present
+			if !strings.Contains(content, "NAVIGATION") {
+				t.Errorf("Help content should contain navigation section for tab %d, level %d", tab, level)
+			}
+		}
+	}
+}
+
+func TestHelpOverlayRendering(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test help overlay when not visible
+	overlay := uiModel.renderHelpOverlay()
+	if overlay != "" {
+		t.Error("Help overlay should be empty when not visible")
+	}
+
+	// Test help overlay when visible
+	uiModel.HelpVisible = true
+	uiModel.HelpLevel = 1
+	overlay = uiModel.renderHelpOverlay()
+	if overlay == "" {
+		t.Error("Help overlay should not be empty when visible")
+	}
+}
+
+func TestHelpSystemIntegration(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test help system integration with main view
+	view := uiModel.View()
+	if !strings.Contains(view, "HELP:") {
+		t.Error("Main view should contain help hints")
+	}
+	if !strings.Contains(view, "[F1] Quick") {
+		t.Error("Main view should contain F1 help hint")
+	}
+	if !strings.Contains(view, "[F2] Detailed") {
+		t.Error("Main view should contain F2 help hint")
+	}
+	if !strings.Contains(view, "[F3] Advanced") {
+		t.Error("Main view should contain F3 help hint")
+	}
+
+	// Test help overlay appears in view when visible
+	uiModel.HelpVisible = true
+	uiModel.HelpLevel = 2
+	view = uiModel.View()
+	if !strings.Contains(view, "Detailed Help [F2]") {
+		t.Error("View should contain help overlay when help is visible")
+	}
+}
+
+func TestHelpContentContextAwareness(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test context-specific help content
+	testCases := []struct {
+		tab             int
+		expectedContent string
+		level           int
+	}{
+		{TabWeeklySummaries, "WEEKLY SUMMARIES", 1},
+		{TabTrips, "TRIPS", 1},
+		{TabExpenses, "EXPENSES", 1},
+		{TabTemplates, "TEMPLATES", 1},
+		{TabTrips, "TRIP TIPS", 2},
+		{TabExpenses, "EXPENSE TIPS", 2},
+		{TabTemplates, "TEMPLATE TIPS", 2},
+		{TabTrips, "ADVANCED TRIP FEATURES", 3},
+		{TabExpenses, "ADVANCED EXPENSE FEATURES", 3},
+		{TabTemplates, "ADVANCED TEMPLATE FEATURES", 3},
+	}
+
+	for _, tc := range testCases {
+		uiModel.ActiveTab = tc.tab
+		uiModel.HelpLevel = tc.level
+		content := uiModel.getHelpContent()
+
+		if !strings.Contains(content, tc.expectedContent) {
+			t.Errorf("Help content for tab %d, level %d should contain '%s'", tc.tab, tc.level, tc.expectedContent)
+		}
+	}
+}
+
+func TestHelpSystemKeyHandling(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Test that help keys work in different application states
+	modes := []string{"date", "origin", "destination", "type", "search"}
+
+	for _, mode := range modes {
+		uiModel.Mode = mode
+		uiModel.HelpVisible = false
+
+		// Test F1 key
+		updatedModel, _ := uiModel.Update(tea.KeyMsg{Type: tea.KeyF1})
+		uiModel = updatedModel.(*Model)
+		if !uiModel.HelpVisible {
+			t.Errorf("F1 should work in mode %s", mode)
+		}
+
+		// Test Esc to close
+		updatedModel, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEsc})
+		uiModel = updatedModel.(*Model)
+		if uiModel.HelpVisible {
+			t.Errorf("Esc should close help in mode %s", mode)
+		}
+	}
+}

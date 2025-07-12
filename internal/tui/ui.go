@@ -45,6 +45,9 @@ type Model struct {
 	CurrentTemplate   model.TripTemplate   // Current template being edited
 	JustChangedMode   bool                 // Flag to prevent double-processing after mode change
 	Width             int                  // Terminal width in characters
+	// Phase 2: Help System
+	HelpVisible bool // Whether help overlay is visible
+	HelpLevel   int  // Help level: 1=Quick, 2=Detailed, 3=Advanced
 }
 
 const (
@@ -156,7 +159,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
+			if m.HelpVisible {
+				// Close help overlay
+				m.HelpVisible = false
+				return m, cmd
+			}
 			return m, tea.Quit
+		case tea.KeyF1:
+			m.HelpVisible = true
+			m.HelpLevel = 1
+			return m, cmd
+		case tea.KeyF2:
+			m.HelpVisible = true
+			m.HelpLevel = 2
+			return m, cmd
+		case tea.KeyF3:
+			m.HelpVisible = true
+			m.HelpLevel = 3
+			return m, cmd
 		case tea.KeyCtrlE:
 			if m.ActiveTab == TabTrips && m.SelectedTrip >= 0 {
 				m.Mode = "edit"
@@ -1455,7 +1475,200 @@ func (m *Model) View() string {
 	// Show context-aware controls
 	s.WriteString(m.renderContextualControls())
 
+	// Show help overlay if visible
+	if m.HelpVisible {
+		s.WriteString("\n")
+		s.WriteString(m.renderHelpOverlay())
+	}
+
 	return s.String()
+}
+
+// getHelpContent returns help content based on current tab and help level
+func (m *Model) getHelpContent() string {
+	var content strings.Builder
+
+	// Create styles for help content
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#00FF00"))
+
+	sectionStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#FFFF00"))
+
+	shortcutStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#00FFFF"))
+
+	descStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFFFF"))
+
+	tipStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#888888"))
+
+	// Title based on help level
+	switch m.HelpLevel {
+	case 1:
+		content.WriteString(titleStyle.Render("Quick Help [F1]") + "\n\n")
+	case 2:
+		content.WriteString(titleStyle.Render("Detailed Help [F2]") + "\n\n")
+	case 3:
+		content.WriteString(titleStyle.Render("Advanced Help [F3]") + "\n\n")
+	}
+
+	// Universal navigation (always shown)
+	content.WriteString(sectionStyle.Render("NAVIGATION") + "\n")
+	content.WriteString(shortcutStyle.Render("↑/↓") + " " + descStyle.Render("Navigate items") + "\n")
+	content.WriteString(shortcutStyle.Render("[Tab]") + " " + descStyle.Render("Switch tabs") + "\n")
+	content.WriteString(shortcutStyle.Render("←/→") + " " + descStyle.Render("Navigate pages") + "\n")
+	content.WriteString(shortcutStyle.Render("[Enter]") + " " + descStyle.Render("Select item") + "\n")
+	content.WriteString(shortcutStyle.Render("[Esc]") + " " + descStyle.Render("Cancel/Close") + "\n")
+
+	if m.HelpLevel >= 2 {
+		content.WriteString(shortcutStyle.Render("[Home]") + " " + descStyle.Render("First item") + "\n")
+		content.WriteString(shortcutStyle.Render("[End]") + " " + descStyle.Render("Last item") + "\n")
+	}
+
+	content.WriteString("\n")
+
+	// Context-specific actions based on active tab
+	switch m.ActiveTab {
+	case TabWeeklySummaries:
+		content.WriteString(sectionStyle.Render("WEEKLY SUMMARIES") + "\n")
+		content.WriteString(shortcutStyle.Render("←/→") + " " + descStyle.Render("Switch weeks") + "\n")
+		if m.HelpLevel >= 2 {
+			content.WriteString(shortcutStyle.Render("[W]") + " " + descStyle.Render("Jump to current week") + "\n")
+			content.WriteString(shortcutStyle.Render("[M]") + " " + descStyle.Render("Jump to current month") + "\n")
+		}
+		if m.HelpLevel >= 3 {
+			content.WriteString(shortcutStyle.Render("[P]") + " " + descStyle.Render("Print summary") + "\n")
+			content.WriteString(shortcutStyle.Render("[E]") + " " + descStyle.Render("Export week") + "\n")
+		}
+
+	case TabTrips:
+		content.WriteString(sectionStyle.Render("TRIPS") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+E]") + " " + descStyle.Render("Edit trip") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+F]") + " " + descStyle.Render("Search trips") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+T]") + " " + descStyle.Render("Use template") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+X]") + " " + descStyle.Render("Add expense") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+R]") + " " + descStyle.Render("Add recurring trip") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+D]") + " " + descStyle.Render("Delete trip") + "\n")
+
+		if m.HelpLevel >= 2 {
+			content.WriteString("\n" + sectionStyle.Render("TRIP TIPS") + "\n")
+			content.WriteString(tipStyle.Render("• Use templates for common routes") + "\n")
+			content.WriteString(tipStyle.Render("• Search works on origin, destination, date, type") + "\n")
+			content.WriteString(tipStyle.Render("• Round trips automatically double mileage") + "\n")
+		}
+
+		if m.HelpLevel >= 3 {
+			content.WriteString("\n" + sectionStyle.Render("ADVANCED TRIP FEATURES") + "\n")
+			content.WriteString(shortcutStyle.Render("[Ctrl+Shift+E]") + " " + descStyle.Render("Bulk edit trips") + "\n")
+			content.WriteString(shortcutStyle.Render("[Ctrl+Shift+D]") + " " + descStyle.Render("Bulk delete trips") + "\n")
+			content.WriteString(tipStyle.Render("• Chain templates: Create → Save → Use") + "\n")
+			content.WriteString(tipStyle.Render("• Recurring trips generate automatically") + "\n")
+		}
+
+	case TabExpenses:
+		content.WriteString(sectionStyle.Render("EXPENSES") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+E]") + " " + descStyle.Render("Edit expense") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+F]") + " " + descStyle.Render("Filter expenses") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+X]") + " " + descStyle.Render("Add expense") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+D]") + " " + descStyle.Render("Delete expense") + "\n")
+
+		if m.HelpLevel >= 2 {
+			content.WriteString("\n" + sectionStyle.Render("EXPENSE TIPS") + "\n")
+			content.WriteString(tipStyle.Render("• Expenses are sorted by date (newest first)") + "\n")
+			content.WriteString(tipStyle.Render("• Use clear descriptions for easy tracking") + "\n")
+		}
+
+		if m.HelpLevel >= 3 {
+			content.WriteString("\n" + sectionStyle.Render("ADVANCED EXPENSE FEATURES") + "\n")
+			content.WriteString(shortcutStyle.Render("[Ctrl+Shift+X]") + " " + descStyle.Render("Bulk import expenses") + "\n")
+			content.WriteString(shortcutStyle.Render("[Ctrl+Shift+C]") + " " + descStyle.Render("Categorize expenses") + "\n")
+		}
+
+	case TabTemplates:
+		content.WriteString(sectionStyle.Render("TEMPLATES") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+E]") + " " + descStyle.Render("Edit template") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+F]") + " " + descStyle.Render("Search templates") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+T]") + " " + descStyle.Render("Create template") + "\n")
+		content.WriteString(shortcutStyle.Render("[U]") + " " + descStyle.Render("Use template") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+D]") + " " + descStyle.Render("Delete template") + "\n")
+
+		if m.HelpLevel >= 2 {
+			content.WriteString("\n" + sectionStyle.Render("TEMPLATE TIPS") + "\n")
+			content.WriteString(tipStyle.Render("• Templates speed up common trip entry") + "\n")
+			content.WriteString(tipStyle.Render("• Use descriptive names for easy identification") + "\n")
+			content.WriteString(tipStyle.Render("• Templates can include notes for context") + "\n")
+		}
+
+		if m.HelpLevel >= 3 {
+			content.WriteString("\n" + sectionStyle.Render("ADVANCED TEMPLATE FEATURES") + "\n")
+			content.WriteString(shortcutStyle.Render("[Ctrl+Shift+T]") + " " + descStyle.Render("Template management") + "\n")
+			content.WriteString(shortcutStyle.Render("[Ctrl+Shift+I]") + " " + descStyle.Render("Import templates") + "\n")
+			content.WriteString(tipStyle.Render("• Templates support recurring trip patterns") + "\n")
+		}
+	}
+
+	content.WriteString("\n")
+
+	// Help navigation
+	content.WriteString(sectionStyle.Render("HELP NAVIGATION") + "\n")
+	content.WriteString(shortcutStyle.Render("[F1]") + " " + descStyle.Render("Quick Help (essentials)") + "\n")
+	content.WriteString(shortcutStyle.Render("[F2]") + " " + descStyle.Render("Detailed Help (complete)") + "\n")
+	content.WriteString(shortcutStyle.Render("[F3]") + " " + descStyle.Render("Advanced Help (power user)") + "\n")
+	content.WriteString(shortcutStyle.Render("[Esc]") + " " + descStyle.Render("Close help") + "\n")
+
+	// Advanced features section (F3 only)
+	if m.HelpLevel >= 3 {
+		content.WriteString("\n" + sectionStyle.Render("KEYBOARD COMBINATIONS") + "\n")
+		content.WriteString(tipStyle.Render("• [Ctrl+F] + [Enter] = Quick search") + "\n")
+		content.WriteString(tipStyle.Render("• [Ctrl+E] + [Tab] = Edit next field") + "\n")
+		content.WriteString(tipStyle.Render("• [Ctrl+X] + [Ctrl+R] = Add expense to trip") + "\n")
+
+		content.WriteString("\n" + sectionStyle.Render("DEVELOPER TOOLS") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+Shift+L]") + " " + descStyle.Render("Show logs") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+Shift+D]") + " " + descStyle.Render("Debug mode") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+Shift+S]") + " " + descStyle.Render("Save backup") + "\n")
+
+		content.WriteString("\n" + sectionStyle.Render("DATA EXPORT") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+Shift+J]") + " " + descStyle.Render("Export JSON") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+Shift+C]") + " " + descStyle.Render("Export CSV") + "\n")
+		content.WriteString(shortcutStyle.Render("[Ctrl+Shift+P]") + " " + descStyle.Render("Export PDF") + "\n")
+	}
+
+	return content.String()
+}
+
+// renderHelpOverlay renders the help overlay modal
+func (m *Model) renderHelpOverlay() string {
+	if !m.HelpVisible {
+		return ""
+	}
+
+	// Create overlay styles
+	overlayStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#00FF00")).
+		Padding(1, 2).
+		Margin(1, 2).
+		Background(lipgloss.Color("#1a1a1a")).
+		Foreground(lipgloss.Color("#FFFFFF"))
+
+	// Get help content
+	helpContent := m.getHelpContent()
+
+	// Calculate overlay dimensions based on terminal width
+	overlayWidth := 80
+	if m.Width > 0 && m.Width < 100 {
+		overlayWidth = m.Width - 10 // Leave margin
+	}
+
+	// Apply width constraint
+	overlayStyle = overlayStyle.Width(overlayWidth)
+
+	return overlayStyle.Render(helpContent)
 }
 
 // renderStatusBar renders the status bar with current mode and context information
@@ -1575,6 +1788,10 @@ func (m *Model) renderContextualControls() string {
 	if m.SearchMode {
 		s.WriteString(normalStyle.Render("🔍 Search mode active") + "\n")
 	}
+
+	// Add help hints
+	s.WriteString("\n")
+	s.WriteString(normalStyle.Render("HELP:        [F1] Quick  [F2] Detailed  [F3] Advanced") + "\n")
 
 	return s.String()
 }
