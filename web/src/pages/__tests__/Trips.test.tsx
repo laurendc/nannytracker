@@ -300,35 +300,6 @@ describe('Trips', () => {
     const user = userEvent.setup()
     const { tripsApi } = await import('../../lib/api')
     vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
-
-    render(
-      <TestWrapper>
-        <Trips />
-      </TestWrapper>
-    )
-
-    await waitFor(() => {
-      const deleteButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-red-600')
-      )
-      expect(deleteButtons.length).toBeGreaterThan(0)
-    })
-
-    const deleteButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-red-600')
-    )[0]
-    
-    await user.click(deleteButton)
-
-    await waitFor(() => {
-      expect(screen.getByText('Are you sure you want to delete this trip?')).toBeInTheDocument()
-    })
-  })
-
-  it('confirms deletion and calls delete API', async () => {
-    const user = userEvent.setup()
-    const { tripsApi } = await import('../../lib/api')
-    vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
     vi.mocked(tripsApi.delete).mockResolvedValue(undefined)
 
     render(
@@ -351,13 +322,39 @@ describe('Trips', () => {
     await user.click(deleteButton)
 
     await waitFor(() => {
-      expect(screen.getByText('Are you sure you want to delete this trip?')).toBeInTheDocument()
+      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this trip?')
     })
+  })
 
-    const confirmButton = screen.getByText('Delete')
-    await user.click(confirmButton)
+  it('confirms deletion and calls delete API', async () => {
+    const user = userEvent.setup()
+    const { tripsApi } = await import('../../lib/api')
+    vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
+    vi.mocked(tripsApi.delete).mockResolvedValue(undefined)
+    // Mock confirm to return true (user confirms deletion)
+    vi.mocked(window.confirm).mockReturnValue(true)
+
+    render(
+      <TestWrapper>
+        <Trips />
+      </TestWrapper>
+    )
 
     await waitFor(() => {
+      const deleteButtons = screen.getAllByRole('button').filter(button => 
+        button.querySelector('svg') && button.className.includes('hover:text-red-600')
+      )
+      expect(deleteButtons.length).toBeGreaterThan(0)
+    })
+
+    const deleteButton = screen.getAllByRole('button').filter(button => 
+      button.querySelector('svg') && button.className.includes('hover:text-red-600')
+    )[0]
+    
+    await user.click(deleteButton)
+
+    await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this trip?')
       expect(tripsApi.delete).toHaveBeenCalledWith(0)
     })
   })
@@ -367,6 +364,8 @@ describe('Trips', () => {
     const { tripsApi } = await import('../../lib/api')
     vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
     vi.mocked(tripsApi.delete).mockResolvedValue(undefined)
+    // Mock confirm to return false (user cancels deletion)
+    vi.mocked(window.confirm).mockReturnValue(false)
 
     render(
       <TestWrapper>
@@ -388,14 +387,7 @@ describe('Trips', () => {
     await user.click(deleteButton)
 
     await waitFor(() => {
-      expect(screen.getByText('Are you sure you want to delete this trip?')).toBeInTheDocument()
-    })
-
-    const cancelButton = screen.getByText('Cancel')
-    await user.click(cancelButton)
-
-    await waitFor(() => {
-      expect(screen.queryByText('Are you sure you want to delete this trip?')).not.toBeInTheDocument()
+      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this trip?')
     })
 
     expect(tripsApi.delete).not.toHaveBeenCalled()
