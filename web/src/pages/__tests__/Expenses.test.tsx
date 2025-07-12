@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -116,7 +116,9 @@ describe('Expenses', () => {
     })
 
     const addButton = screen.getByText('Add Expense')
-    await user.click(addButton)
+    await act(async () => {
+      await user.click(addButton)
+    })
 
     expect(screen.getByText('Add New Expense')).toBeInTheDocument()
     // Check for form inputs by their type and placeholder
@@ -130,7 +132,11 @@ describe('Expenses', () => {
     const user = userEvent.setup()
     const { expensesApi } = await import('../../lib/api')
     vi.mocked(expensesApi.getAll).mockResolvedValue([])
-    vi.mocked(expensesApi.create).mockResolvedValue({})
+    vi.mocked(expensesApi.create).mockResolvedValue({
+      date: '2024-12-20',
+      amount: 15.50,
+      description: 'Lunch'
+    })
 
     render(
       <TestWrapper>
@@ -144,7 +150,9 @@ describe('Expenses', () => {
 
     // Open form
     const addButton = screen.getByText('Add Expense')
-    await user.click(addButton)
+    await act(async () => {
+      await user.click(addButton)
+    })
 
     // Fill form using specific selectors
     const dateInput = screen.getAllByDisplayValue('')[0]
@@ -269,7 +277,11 @@ describe('Expenses', () => {
     const user = userEvent.setup()
     const { expensesApi } = await import('../../lib/api')
     vi.mocked(expensesApi.getAll).mockResolvedValue(mockExpenses)
-    vi.mocked(expensesApi.update).mockResolvedValue({})
+    vi.mocked(expensesApi.update).mockResolvedValue({
+      date: '2024-12-20',
+      amount: 25.75,
+      description: 'Updated expense'
+    })
 
     render(
       <TestWrapper>

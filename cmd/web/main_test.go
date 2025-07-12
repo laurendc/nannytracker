@@ -36,7 +36,10 @@ func setupTestServer(t *testing.T) (*Server, string, func()) {
 	}
 
 	// Create server
-	server := NewServer(cfg)
+	server, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 
 	cleanup := func() {
 		os.RemoveAll(tempDir)
@@ -423,7 +426,10 @@ func TestServerCreation(t *testing.T) {
 		RatePerMile: 0.70,
 	}
 
-	server := NewServer(cfg)
+	server, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 	if server == nil {
 		t.Fatal("Expected server to be created")
 		return
@@ -460,7 +466,10 @@ func setupBenchmarkServer(b *testing.B) (*Server, func()) {
 	}
 
 	// Create server
-	server := NewServer(cfg)
+	server, err := NewServer(cfg)
+	if err != nil {
+		b.Fatalf("Failed to create server: %v", err)
+	}
 
 	cleanup := func() {
 		os.RemoveAll(tempDir)
