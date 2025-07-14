@@ -52,32 +52,28 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
 // Mock data
 const mockTrips = [
   {
-    id: 1,
     date: '2024-12-19',
     origin: 'Home',
     destination: 'Work',
-    type: 'single',
+    type: 'single' as const,
     miles: 15.5,
   },
   {
-    id: 2,
     date: '2024-12-20',
     origin: 'Work',
     destination: 'Store',
-    type: 'round',
+    type: 'round' as const,
     miles: 8.2,
   },
 ]
 
 const mockExpenses = [
   {
-    id: 1,
     date: '2024-12-19',
     description: 'Lunch',
     amount: 12.5,
   },
   {
-    id: 2,
     date: '2024-12-20',
     description: 'Coffee',
     amount: 3.75,
@@ -90,6 +86,8 @@ const mockSummaries = [
     weekEnd: '2024-12-21',
     totalMiles: 23.7,
     totalAmount: 16.25,
+    expenses: mockExpenses,
+    trips: mockTrips,
   },
 ]
 
