@@ -2,10 +2,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    visualizer({
+      filename: 'dist/bundle-analysis.html',
+      open: true,
+      gzipSize: true,
+      brotliSize: true,
+    }),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -23,6 +32,22 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks for better caching
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          query: ['@tanstack/react-query'],
+          ui: ['lucide-react', 'clsx', 'tailwind-merge'],
+          charts: ['recharts'],
+          utils: ['date-fns', 'axios'],
+        },
+      },
+    },
+    // Performance optimization
+    chunkSizeWarningLimit: 1000, // 1MB warning limit
+    target: 'es2015', // Better browser compatibility
   },
   test: {
     globals: true,
