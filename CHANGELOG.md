@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Enhanced development workflow with improved scripts and documentation
+
+### Changed
+- Continued refinement of mobile-first responsive design
+- Performance optimizations and code quality improvements
+
+### Fixed
+- Minor bug fixes and edge case handling
+
+## [1.2.0] - 2025-07-12
+
+### Added
 - **Phase 1 Complete**: Mobile-first responsive design for web application
 - Mobile hamburger menu with slide-out navigation drawer
 - Responsive layout system with mobile-first breakpoints
@@ -128,7 +140,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Environment-based configuration
 - Cross-platform support (Linux, macOS, Windows)
 
-[Unreleased]: https://github.com/laurendc/nannytracker/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/laurendc/nannytracker/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/laurendc/nannytracker/releases/tag/v1.2.0
 [1.1.0]: https://github.com/laurendc/nannytracker/releases/tag/v1.1.0
 [1.0.4]: https://github.com/laurendc/nannytracker/releases/tag/v1.0.4
 [0.1.0]: https://github.com/laurendc/nannytracker/releases/tag/v0.1.0 
