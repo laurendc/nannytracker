@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Edit, Trash2, Car } from 'lucide-react'
+import { Plus, Edit, Trash2, Car, MapPin, Calendar, ArrowRight } from 'lucide-react'
 import { tripsApi } from '../lib/api'
 import type { Trip } from '../types'
 
@@ -76,9 +76,9 @@ export default function Trips() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="h-6 sm:h-8 bg-gray-200 rounded w-1/2 sm:w-1/4 mb-4 sm:mb-6"></div>
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="card">
@@ -93,31 +93,32 @@ export default function Trips() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Mobile-first header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Trips</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Trips</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             Manage your mileage tracking entries
           </p>
         </div>
         <button
           onClick={() => setIsAddingTrip(true)}
-          className="btn btn-primary flex items-center"
+          className="btn btn-primary flex items-center justify-center w-full sm:w-auto touch-target"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Trip
         </button>
       </div>
 
-      {/* Add Trip Form */}
+      {/* Add Trip Form - Mobile-optimized */}
       {isAddingTrip && (
         <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Trip</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Add New Trip</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-grid">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Date
                 </label>
                 <input
@@ -129,7 +130,7 @@ export default function Trips() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Type
                 </label>
                 <select
@@ -144,7 +145,7 @@ export default function Trips() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Origin
               </label>
               <input
@@ -157,7 +158,7 @@ export default function Trips() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Destination
               </label>
               <input
@@ -169,8 +170,8 @@ export default function Trips() {
                 required
               />
             </div>
-            <div className="flex gap-3">
-              <button type="submit" className="btn btn-primary" disabled={createTripMutation.isLoading}>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button type="submit" className="btn btn-primary touch-target" disabled={createTripMutation.isLoading}>
                 {createTripMutation.isLoading ? 'Adding...' : 'Add Trip'}
               </button>
               <button
@@ -179,7 +180,7 @@ export default function Trips() {
                   setIsAddingTrip(false)
                   setNewTrip({ date: '', origin: '', destination: '', type: 'single' })
                 }}
-                className="btn btn-secondary"
+                className="btn btn-secondary touch-target"
               >
                 Cancel
               </button>
@@ -188,14 +189,14 @@ export default function Trips() {
         </div>
       )}
 
-      {/* Edit Trip Form */}
+      {/* Edit Trip Form - Mobile-optimized */}
       {editingTrip && (
         <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Trip</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Edit Trip</h2>
           <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-grid">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Date
                 </label>
                 <input
@@ -210,7 +211,7 @@ export default function Trips() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Type
                 </label>
                 <select
@@ -228,7 +229,7 @@ export default function Trips() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Origin
               </label>
               <input
@@ -244,7 +245,7 @@ export default function Trips() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Destination
               </label>
               <input
@@ -260,7 +261,7 @@ export default function Trips() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Miles
               </label>
               <input
@@ -276,14 +277,14 @@ export default function Trips() {
                 required
               />
             </div>
-            <div className="flex gap-3">
-              <button type="submit" className="btn btn-primary" disabled={updateTripMutation.isLoading}>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button type="submit" className="btn btn-primary touch-target" disabled={updateTripMutation.isLoading}>
                 {updateTripMutation.isLoading ? 'Updating...' : 'Update Trip'}
               </button>
               <button
                 type="button"
                 onClick={() => setEditingTrip(null)}
-                className="btn btn-secondary"
+                className="btn btn-secondary touch-target"
               >
                 Cancel
               </button>
@@ -292,53 +293,63 @@ export default function Trips() {
         </div>
       )}
 
-      {/* Trips List */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">All Trips</h2>
+      {/* Trips List - Mobile-first cards */}
+      <div className="space-y-4">
         {trips.length === 0 ? (
-          <div className="text-center py-12">
-            <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No trips recorded yet.</p>
-            <p className="text-gray-400 text-sm mt-1">
-              Add your first trip to get started.
-            </p>
+          <div className="card text-center py-8">
+            <Car className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-500 text-sm sm:text-base">No trips recorded yet.</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-2">Add your first trip to get started!</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {trips.map((trip, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Car className="w-5 h-5 text-blue-600" />
+          trips.map((trip, index) => (
+            <div key={index} className="card hover:shadow-md transition-shadow">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1 mb-4 sm:mb-0">
+                  <div className="flex items-center mb-2">
+                    <Calendar className="w-4 h-4 text-gray-400 mr-2" />
+                    <span className="text-sm text-gray-600">
+                      {format(new Date(trip.date), 'MMM d, yyyy')}
+                    </span>
+                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {trip.type}
+                    </span>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {trip.origin} → {trip.destination}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {format(new Date(trip.date), 'MMM d, yyyy')} • {trip.type} • {trip.miles} miles
-                    </p>
+                  <div className="flex items-center mb-2">
+                    <MapPin className="w-4 h-4 text-gray-400 mr-2" />
+                    <div className="flex items-center text-sm sm:text-base">
+                      <span className="font-medium text-gray-900 truncate">{trip.origin}</span>
+                      <ArrowRight className="w-4 h-4 mx-2 text-gray-400" />
+                      <span className="font-medium text-gray-900 truncate">{trip.destination}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <Car className="w-4 h-4 text-gray-400 mr-2" />
+                    <span className="text-sm sm:text-base font-semibold text-gray-900">
+                      {trip.miles} miles
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-row sm:flex-col gap-2 sm:gap-3">
                   <button
                     onClick={() => setEditingTrip({ trip, index })}
-                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                    disabled={updateTripMutation.isLoading}
+                    className="btn btn-secondary text-sm px-3 py-2 flex items-center justify-center touch-target"
                   >
-                    <Edit className="w-4 h-4" />
+                    <Edit className="w-4 h-4 mr-1" />
+                    Edit
                   </button>
                   <button
                     onClick={() => handleDelete(index)}
-                    className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                    className="btn bg-red-100 text-red-700 hover:bg-red-200 text-sm px-3 py-2 flex items-center justify-center touch-target"
                     disabled={deleteTripMutation.isLoading}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))
         )}
       </div>
     </div>

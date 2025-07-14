@@ -27,7 +27,7 @@ describe('App', () => {
       </TestWrapper>
     )
 
-    expect(screen.getByText('NannyTracker')).toBeInTheDocument()
+    expect(screen.getAllByText('NannyTracker').length).toBeGreaterThan(0)
   })
 
   it('renders navigation links', () => {
@@ -38,9 +38,9 @@ describe('App', () => {
     )
 
     expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0)
-    expect(screen.getByText('Trips')).toBeInTheDocument()
-    expect(screen.getByText('Expenses')).toBeInTheDocument()
-    expect(screen.getByText('Summaries')).toBeInTheDocument()
+    expect(screen.getAllByText('Trips').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Expenses').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Summaries').length).toBeGreaterThan(0)
   })
 
   it('renders main content area', () => {
@@ -61,11 +61,11 @@ describe('App', () => {
       </TestWrapper>
     )
 
-    // Check for header
-    expect(screen.getByRole('banner')).toBeInTheDocument()
+    // Check for headers (mobile and desktop)
+    expect(screen.getAllByRole('banner').length).toBeGreaterThan(0)
     
-    // Check for navigation
-    expect(screen.getByRole('navigation')).toBeInTheDocument()
+    // Check for navigation (mobile and desktop)
+    expect(screen.getAllByRole('navigation').length).toBeGreaterThan(0)
     
     // Check for main content
     expect(screen.getByRole('main')).toBeInTheDocument()

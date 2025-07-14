@@ -181,7 +181,7 @@ describe('Trips', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('All Trips')).toBeInTheDocument()
+      expect(screen.getByText('No trips recorded yet.')).toBeInTheDocument()
     })
   })
 
@@ -212,12 +212,13 @@ describe('Trips', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Home → Work')).toBeInTheDocument()
-      expect(screen.getByText('Work → Store')).toBeInTheDocument()
+      expect(screen.getAllByText('Home').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Work').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Store').length).toBeGreaterThan(0)
     })
   })
 
-  it('shows edit and delete buttons for each trip', async () => {
+  it('renders trips with edit and delete buttons', async () => {
     const { tripsApi } = await import('../../lib/api')
     vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
 
@@ -228,12 +229,8 @@ describe('Trips', () => {
     )
 
     await waitFor(() => {
-      const editButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-      )
-      const deleteButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-red-600')
-      )
+      const editButtons = screen.getAllByText('Edit')
+      const deleteButtons = screen.getAllByText('Delete')
       
       expect(editButtons.length).toBeGreaterThan(0)
       expect(deleteButtons.length).toBeGreaterThan(0)
@@ -252,15 +249,11 @@ describe('Trips', () => {
     )
 
     await waitFor(() => {
-      const editButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-      )
+      const editButtons = screen.getAllByText('Edit')
       expect(editButtons.length).toBeGreaterThan(0)
     })
 
-    const editButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-    )[0]
+    const editButton = screen.getAllByText('Edit')[0]
     
     await user.click(editButton)
 
@@ -288,15 +281,11 @@ describe('Trips', () => {
     )
 
     await waitFor(() => {
-      const editButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-      )
+      const editButtons = screen.getAllByText('Edit')
       expect(editButtons.length).toBeGreaterThan(0)
     })
 
-    const editButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-    )[0]
+    const editButton = screen.getAllByText('Edit')[0]
     
     await user.click(editButton)
 
@@ -333,15 +322,11 @@ describe('Trips', () => {
     )
 
     await waitFor(() => {
-      const deleteButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-red-600')
-      )
+      const deleteButtons = screen.getAllByText('Delete')
       expect(deleteButtons.length).toBeGreaterThan(0)
     })
 
-    const deleteButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-red-600')
-    )[0]
+    const deleteButton = screen.getAllByText('Delete')[0]
     
     await user.click(deleteButton)
 
@@ -365,15 +350,11 @@ describe('Trips', () => {
     )
 
     await waitFor(() => {
-      const deleteButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-red-600')
-      )
+      const deleteButtons = screen.getAllByText('Delete')
       expect(deleteButtons.length).toBeGreaterThan(0)
     })
 
-    const deleteButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-red-600')
-    )[0]
+    const deleteButton = screen.getAllByText('Delete')[0]
     
     await user.click(deleteButton)
 
@@ -398,15 +379,11 @@ describe('Trips', () => {
     )
 
     await waitFor(() => {
-      const deleteButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-red-600')
-      )
+      const deleteButtons = screen.getAllByText('Delete')
       expect(deleteButtons.length).toBeGreaterThan(0)
     })
 
-    const deleteButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-red-600')
-    )[0]
+    const deleteButton = screen.getAllByText('Delete')[0]
     
     await user.click(deleteButton)
 
