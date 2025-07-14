@@ -183,7 +183,7 @@ describe('Expenses', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('All Expenses')).toBeInTheDocument()
+      expect(screen.getByText('No expenses recorded yet.')).toBeInTheDocument()
     })
   })
 
@@ -230,14 +230,8 @@ describe('Expenses', () => {
     )
 
     await waitFor(() => {
-      // Look for buttons with SVG icons (edit and delete buttons)
-      const buttons = screen.getAllByRole('button')
-      const editButtons = buttons.filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-      )
-      const deleteButtons = buttons.filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-red-600')
-      )
+      const editButtons = screen.getAllByText('Edit')
+      const deleteButtons = screen.getAllByText('Delete')
       
       expect(editButtons.length).toBeGreaterThan(0)
       expect(deleteButtons.length).toBeGreaterThan(0)
@@ -256,15 +250,11 @@ describe('Expenses', () => {
     )
 
     await waitFor(() => {
-      const editButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-      )
+      const editButtons = screen.getAllByText('Edit')
       expect(editButtons.length).toBeGreaterThan(0)
     })
 
-    const editButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-    )[0]
+    const editButton = screen.getAllByText('Edit')[0]
     
     await user.click(editButton)
 
@@ -290,15 +280,11 @@ describe('Expenses', () => {
     )
 
     await waitFor(() => {
-      const editButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-      )
+      const editButtons = screen.getAllByText('Edit')
       expect(editButtons.length).toBeGreaterThan(0)
     })
 
-    const editButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-gray-600')
-    )[0]
+    const editButton = screen.getAllByText('Edit')[0]
     
     await user.click(editButton)
 
@@ -335,15 +321,11 @@ describe('Expenses', () => {
     )
 
     await waitFor(() => {
-      const deleteButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-red-600')
-      )
+      const deleteButtons = screen.getAllByText('Delete')
       expect(deleteButtons.length).toBeGreaterThan(0)
     })
 
-    const deleteButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-red-600')
-    )[0]
+    const deleteButton = screen.getAllByText('Delete')[0]
     
     await user.click(deleteButton)
 
@@ -367,15 +349,11 @@ describe('Expenses', () => {
     )
 
     await waitFor(() => {
-      const deleteButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-red-600')
-      )
+      const deleteButtons = screen.getAllByText('Delete')
       expect(deleteButtons.length).toBeGreaterThan(0)
     })
 
-    const deleteButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-red-600')
-    )[0]
+    const deleteButton = screen.getAllByText('Delete')[0]
     
     await user.click(deleteButton)
 
@@ -400,15 +378,11 @@ describe('Expenses', () => {
     )
 
     await waitFor(() => {
-      const deleteButtons = screen.getAllByRole('button').filter(button => 
-        button.querySelector('svg') && button.className.includes('hover:text-red-600')
-      )
+      const deleteButtons = screen.getAllByText('Delete')
       expect(deleteButtons.length).toBeGreaterThan(0)
     })
 
-    const deleteButton = screen.getAllByRole('button').filter(button => 
-      button.querySelector('svg') && button.className.includes('hover:text-red-600')
-    )[0]
+    const deleteButton = screen.getAllByText('Delete')[0]
     
     await user.click(deleteButton)
 

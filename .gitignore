@@ -134,6 +134,7 @@ jspm_packages/
 .tern-port
 
 # Go/Web build artifacts
+nannytracker-web
 
 # Context (private development file)
 CONTEXT.md

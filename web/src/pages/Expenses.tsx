@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Edit, Trash2, Receipt } from 'lucide-react'
+import { Plus, Edit, Trash2, Receipt, Calendar, DollarSign } from 'lucide-react'
 import { expensesApi } from '../lib/api'
 import type { Expense } from '../types'
 
@@ -77,9 +77,9 @@ export default function Expenses() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="h-6 sm:h-8 bg-gray-200 rounded w-1/2 sm:w-1/4 mb-4 sm:mb-6"></div>
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="card">
@@ -94,44 +94,45 @@ export default function Expenses() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Mobile-first header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Expenses</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             Track your reimbursable expenses
           </p>
         </div>
         <button
           onClick={() => setIsAddingExpense(true)}
-          className="btn btn-primary flex items-center"
+          className="btn btn-primary flex items-center justify-center w-full sm:w-auto touch-target"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Expense
         </button>
       </div>
 
-      {/* Total Expenses Summary */}
+      {/* Total Expenses Summary - Mobile-optimized */}
       <div className="card">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-            <p className="text-3xl font-bold text-gray-900">${totalExpenses.toFixed(2)}</p>
+            <p className="text-xs sm:text-sm font-medium text-gray-600">Total Expenses</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900">${totalExpenses.toFixed(2)}</p>
           </div>
-          <div className="p-3 bg-yellow-100 rounded-lg">
-            <Receipt className="w-8 h-8 text-yellow-600" />
+          <div className="p-2 sm:p-3 bg-yellow-100 rounded-lg touch-target">
+            <Receipt className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
           </div>
         </div>
       </div>
 
-      {/* Add Expense Form */}
+      {/* Add Expense Form - Mobile-optimized */}
       {isAddingExpense && (
         <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Expense</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Add New Expense</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-grid">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Date
                 </label>
                 <input
@@ -143,7 +144,7 @@ export default function Expenses() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Amount
                 </label>
                 <input
@@ -163,7 +164,7 @@ export default function Expenses() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description
               </label>
               <input
@@ -175,8 +176,8 @@ export default function Expenses() {
                 required
               />
             </div>
-            <div className="flex gap-3">
-              <button type="submit" className="btn btn-primary" disabled={createExpenseMutation.isLoading}>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button type="submit" className="btn btn-primary touch-target" disabled={createExpenseMutation.isLoading}>
                 {createExpenseMutation.isLoading ? 'Adding...' : 'Add Expense'}
               </button>
               <button
@@ -185,7 +186,7 @@ export default function Expenses() {
                   setIsAddingExpense(false)
                   setNewExpense({ date: '', amount: 0, description: '' })
                 }}
-                className="btn btn-secondary"
+                className="btn btn-secondary touch-target"
               >
                 Cancel
               </button>
@@ -194,14 +195,14 @@ export default function Expenses() {
         </div>
       )}
 
-      {/* Edit Expense Form */}
+      {/* Edit Expense Form - Mobile-optimized */}
       {editingExpense && (
         <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Expense</h2>
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Edit Expense</h2>
           <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="form-grid">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Date
                 </label>
                 <input
@@ -216,22 +217,18 @@ export default function Expenses() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Amount
                 </label>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
-                  value={editingExpense.expense.amount === 0 ? '' : editingExpense.expense.amount}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    const numValue = value === '' ? 0 : parseFloat(value)
-                    setEditingExpense({
-                      ...editingExpense,
-                      expense: { ...editingExpense.expense, amount: isNaN(numValue) ? 0 : numValue }
-                    })
-                  }}
+                  value={editingExpense.expense.amount}
+                  onChange={(e) => setEditingExpense({
+                    ...editingExpense,
+                    expense: { ...editingExpense.expense, amount: parseFloat(e.target.value) || 0 }
+                  })}
                   className="input"
                   placeholder="0.00"
                   required
@@ -239,7 +236,7 @@ export default function Expenses() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description
               </label>
               <input
@@ -254,14 +251,14 @@ export default function Expenses() {
                 required
               />
             </div>
-            <div className="flex gap-3">
-              <button type="submit" className="btn btn-primary" disabled={updateExpenseMutation.isLoading}>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button type="submit" className="btn btn-primary touch-target" disabled={updateExpenseMutation.isLoading}>
                 {updateExpenseMutation.isLoading ? 'Updating...' : 'Update Expense'}
               </button>
               <button
                 type="button"
                 onClick={() => setEditingExpense(null)}
-                className="btn btn-secondary"
+                className="btn btn-secondary touch-target"
               >
                 Cancel
               </button>
@@ -270,56 +267,58 @@ export default function Expenses() {
         </div>
       )}
 
-      {/* Expenses List */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">All Expenses</h2>
+      {/* Expenses List - Mobile-first cards */}
+      <div className="space-y-4">
         {expenses.length === 0 ? (
-          <div className="text-center py-12">
-            <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No expenses recorded yet.</p>
-            <p className="text-gray-400 text-sm mt-1">
-              Add your first expense to get started.
-            </p>
+          <div className="card text-center py-8">
+            <Receipt className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-500 text-sm sm:text-base">No expenses recorded yet.</p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-2">Add your first expense to get started!</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {expenses.map((expense, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Receipt className="w-5 h-5 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{expense.description}</p>
-                    <p className="text-sm text-gray-600">
+          expenses.map((expense, index) => (
+            <div key={index} className="card hover:shadow-md transition-shadow">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1 mb-4 sm:mb-0">
+                  <div className="flex items-center mb-2">
+                    <Calendar className="w-4 h-4 text-gray-400 mr-2" />
+                    <span className="text-sm text-gray-600">
                       {format(new Date(expense.date), 'MMM d, yyyy')}
-                    </p>
+                    </span>
+                  </div>
+                  <div className="flex items-center mb-2">
+                    <Receipt className="w-4 h-4 text-gray-400 mr-2" />
+                    <span className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                      {expense.description}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <DollarSign className="w-4 h-4 text-gray-400 mr-2" />
+                    <span className="text-sm sm:text-base font-semibold text-gray-900">
+                      ${expense.amount.toFixed(2)}
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">${expense.amount.toFixed(2)}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setEditingExpense({ expense, index })}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                      disabled={updateExpenseMutation.isLoading}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(index)}
-                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                      disabled={deleteExpenseMutation.isLoading}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                <div className="flex flex-row sm:flex-col gap-2 sm:gap-3">
+                  <button
+                    onClick={() => setEditingExpense({ expense, index })}
+                    className="btn btn-secondary text-sm px-3 py-2 flex items-center justify-center touch-target"
+                  >
+                    <Edit className="w-4 h-4 mr-1" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(index)}
+                    className="btn bg-red-100 text-red-700 hover:bg-red-200 text-sm px-3 py-2 flex items-center justify-center touch-target"
+                    disabled={deleteExpenseMutation.isLoading}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))
         )}
       </div>
     </div>

@@ -10,26 +10,90 @@
   body {
     @apply bg-gray-50 text-gray-900;
   }
+  
+  /* Better touch targets and mobile scrolling */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Smooth scrolling for mobile */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+  }
 }
 
 @layer components {
+  /* Mobile-first button styles */
   .btn {
     @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+    /* Touch-optimized minimum size */
+    min-height: 44px;
+    min-width: 44px;
   }
   
   .btn-primary {
     @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+    /* Better touch feedback */
+    @apply active:scale-95 active:bg-primary-800;
   }
   
   .btn-secondary {
     @apply bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+    /* Better touch feedback */
+    @apply active:scale-95 active:bg-gray-400;
   }
   
+  /* Mobile-optimized card styles */
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6;
   }
   
+  /* Mobile-first input styles */
   .input {
     @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+    /* Better touch targets */
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Mobile-specific utilities */
+  .touch-target {
+    /* Minimum touch target size */
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Safe area for bottom navigation */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Mobile-friendly spacing */
+  .mobile-spacing {
+    @apply px-4 py-3 sm:px-6 sm:py-4;
+  }
+  
+  /* Responsive text sizes */
+  .text-responsive {
+    @apply text-sm sm:text-base;
+  }
+  
+  /* Mobile-optimized form layouts */
+  .form-grid {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6;
+  }
+  
+  /* Better mobile modal styles */
+  .modal-mobile {
+    @apply fixed inset-0 z-50 overflow-y-auto;
+  }
+  
+  .modal-mobile .modal-content {
+    @apply min-h-screen sm:min-h-0 sm:my-8 sm:max-w-lg sm:mx-auto;
   }
 } 
