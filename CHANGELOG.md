@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Enhanced development workflow with improved scripts and documentation
+
+### Changed
+- Continued refinement of mobile-first responsive design
+- Performance optimizations and code quality improvements
+
+### Fixed
+- Minor bug fixes and edge case handling
+
+## [1.3.0] - 2025-01-15
+
+### Added
 - **Phase 3 Complete**: Advanced search and filtering functionality for web application
 - SearchFilter component with real-time search and multi-criteria filtering
 - Filter utilities with TypeScript support and performance optimization
@@ -150,7 +162,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Environment-based configuration
 - Cross-platform support (Linux, macOS, Windows)
 
-[Unreleased]: https://github.com/laurendc/nannytracker/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/laurendc/nannytracker/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/laurendc/nannytracker/releases/tag/v1.3.0
 [1.2.0]: https://github.com/laurendc/nannytracker/releases/tag/v1.2.0
 [1.1.0]: https://github.com/laurendc/nannytracker/releases/tag/v1.1.0
 [1.0.4]: https://github.com/laurendc/nannytracker/releases/tag/v1.0.4
