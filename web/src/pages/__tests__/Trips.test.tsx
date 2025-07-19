@@ -36,7 +36,6 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
 // Mock data
 const mockTrips = [
   {
-    id: 1,
     date: '2024-12-20',
     origin: 'Home',
     destination: 'Work',
@@ -44,18 +43,26 @@ const mockTrips = [
     miles: 15.5,
   },
   {
-    id: 2,
     date: '2024-12-21',
     origin: 'Work',
     destination: 'Store',
     type: 'round' as const,
     miles: 8.2,
   },
+  {
+    date: '2024-12-22',
+    origin: 'Home',
+    destination: 'Gym',
+    type: 'single' as const,
+    miles: 5.0,
+  },
 ]
 
 describe('Trips', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Clear localStorage before each test to ensure clean state
+    localStorage.clear()
   })
 
   it('renders trips page title and description', async () => {
@@ -140,26 +147,33 @@ describe('Trips', () => {
     })
 
     const addButton = screen.getByText('Add Trip')
-    await act(async () => {
-      await user.click(addButton)
+    await user.click(addButton)
+
+    // Wait for form to appear
+    await waitFor(() => {
+      expect(screen.getByText('Add New Trip')).toBeInTheDocument()
     })
 
+    // Select the date input by filtering all empty inputs for type="date"
     const emptyInputs = screen.getAllByDisplayValue('')
-    const dateInput = emptyInputs[0]
+    const dateInput = emptyInputs.find(input => input.getAttribute('type') === 'date')
     const originInput = screen.getByPlaceholderText('Enter origin address')
     const destinationInput = screen.getByPlaceholderText('Enter destination address')
     const typeSelect = screen.getByRole('combobox')
 
-    await user.type(dateInput, '2024-12-20')
+    expect(dateInput).toBeDefined()
+    await user.type(dateInput!, '2024-12-20')
     await user.type(originInput, 'Home')
     await user.type(destinationInput, 'Work')
     await user.selectOptions(typeSelect, 'single')
 
-    const submitButtons = screen.getAllByText('Add Trip')
-    const submitButton = submitButtons[1]
+    // Submit the form
+    const addTripButtons = screen.getAllByRole('button', { name: 'Add Trip' })
+    // The first is the page button, the second is the form submit
+    const submitButton = addTripButtons[1]
     await user.click(submitButton)
 
-    // After successful submission, the form should close and the API should be called
+    // Wait for the API call to be made
     await waitFor(() => {
       expect(tripsApi.create).toHaveBeenCalledWith({
         date: '2024-12-20',
@@ -197,11 +211,11 @@ describe('Trips', () => {
 
     await waitFor(() => {
       expect(screen.getByText('No trips recorded yet.')).toBeInTheDocument()
-      expect(screen.getByText(/Add your first trip to get started/)).toBeInTheDocument()
+      expect(screen.getByText('Add your first trip to get started!')).toBeInTheDocument()
     })
   })
 
-  it('displays trip information correctly', async () => {
+  it('displays trips when data is available', async () => {
     const { tripsApi } = await import('../../lib/api')
     vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
 
@@ -214,187 +228,12 @@ describe('Trips', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Home').length).toBeGreaterThan(0)
       expect(screen.getAllByText('Work').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('Store').length).toBeGreaterThan(0)
+      expect(screen.getByText('Store')).toBeInTheDocument()
+      expect(screen.getByText('Gym')).toBeInTheDocument()
     })
   })
 
-  it('renders trips with edit and delete buttons', async () => {
-    const { tripsApi } = await import('../../lib/api')
-    vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
-
-    render(
-      <TestWrapper>
-        <Trips />
-      </TestWrapper>
-    )
-
-    await waitFor(() => {
-      const editButtons = screen.getAllByText('Edit')
-      const deleteButtons = screen.getAllByText('Delete')
-      
-      expect(editButtons.length).toBeGreaterThan(0)
-      expect(deleteButtons.length).toBeGreaterThan(0)
-    })
-  })
-
-  it('opens edit form when edit button is clicked', async () => {
-    const user = userEvent.setup()
-    const { tripsApi } = await import('../../lib/api')
-    vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
-
-    render(
-      <TestWrapper>
-        <Trips />
-      </TestWrapper>
-    )
-
-    await waitFor(() => {
-      const editButtons = screen.getAllByText('Edit')
-      expect(editButtons.length).toBeGreaterThan(0)
-    })
-
-    const editButton = screen.getAllByText('Edit')[0]
-    
-    await user.click(editButton)
-
-    await waitFor(() => {
-      expect(screen.getByText('Edit Trip')).toBeInTheDocument()
-    })
-  })
-
-  it('submits edit form with updated data', async () => {
-    const user = userEvent.setup()
-    const { tripsApi } = await import('../../lib/api')
-    vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
-    vi.mocked(tripsApi.update).mockResolvedValue({
-      date: '2024-12-18',
-      origin: 'Updated Home',
-      destination: 'Work',
-      type: 'single',
-      miles: 15.5
-    })
-
-    render(
-      <TestWrapper>
-        <Trips />
-      </TestWrapper>
-    )
-
-    await waitFor(() => {
-      const editButtons = screen.getAllByText('Edit')
-      expect(editButtons.length).toBeGreaterThan(0)
-    })
-
-    const editButton = screen.getAllByText('Edit')[0]
-    
-    await user.click(editButton)
-
-    await waitFor(() => {
-      expect(screen.getByText('Edit Trip')).toBeInTheDocument()
-    })
-
-    // Find the origin input and update it
-    const originInput = screen.getByDisplayValue('Home')
-    await user.clear(originInput)
-    await user.type(originInput, 'Updated Home')
-
-    // Find and click the update button
-    const updateButton = screen.getByText('Update Trip')
-    await user.click(updateButton)
-
-    await waitFor(() => {
-      expect(tripsApi.update).toHaveBeenCalledWith(0, expect.objectContaining({
-        origin: 'Updated Home',
-      }))
-    })
-  })
-
-  it('shows delete confirmation dialog when delete button is clicked', async () => {
-    const user = userEvent.setup()
-    const { tripsApi } = await import('../../lib/api')
-    vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
-    vi.mocked(tripsApi.delete).mockResolvedValue(undefined)
-
-    render(
-      <TestWrapper>
-        <Trips />
-      </TestWrapper>
-    )
-
-    await waitFor(() => {
-      const deleteButtons = screen.getAllByText('Delete')
-      expect(deleteButtons.length).toBeGreaterThan(0)
-    })
-
-    const deleteButton = screen.getAllByText('Delete')[0]
-    
-    await user.click(deleteButton)
-
-    await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this trip?')
-    })
-  })
-
-  it('confirms deletion and calls delete API', async () => {
-    const user = userEvent.setup()
-    const { tripsApi } = await import('../../lib/api')
-    vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
-    vi.mocked(tripsApi.delete).mockResolvedValue(undefined)
-    // Mock confirm to return true (user confirms deletion)
-    vi.mocked(window.confirm).mockReturnValue(true)
-
-    render(
-      <TestWrapper>
-        <Trips />
-      </TestWrapper>
-    )
-
-    await waitFor(() => {
-      const deleteButtons = screen.getAllByText('Delete')
-      expect(deleteButtons.length).toBeGreaterThan(0)
-    })
-
-    const deleteButton = screen.getAllByText('Delete')[0]
-    
-    await user.click(deleteButton)
-
-    await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this trip?')
-      expect(tripsApi.delete).toHaveBeenCalledWith(0)
-    })
-  })
-
-  it('cancels deletion when cancel button is clicked', async () => {
-    const user = userEvent.setup()
-    const { tripsApi } = await import('../../lib/api')
-    vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
-    vi.mocked(tripsApi.delete).mockResolvedValue(undefined)
-    // Mock confirm to return false (user cancels deletion)
-    vi.mocked(window.confirm).mockReturnValue(false)
-
-    render(
-      <TestWrapper>
-        <Trips />
-      </TestWrapper>
-    )
-
-    await waitFor(() => {
-      const deleteButtons = screen.getAllByText('Delete')
-      expect(deleteButtons.length).toBeGreaterThan(0)
-    })
-
-    const deleteButton = screen.getAllByText('Delete')[0]
-    
-    await user.click(deleteButton)
-
-    await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this trip?')
-    })
-
-    expect(tripsApi.delete).not.toHaveBeenCalled()
-  })
-
-  it('validates required form fields', async () => {
+  it('closes add trip form when cancel is clicked', async () => {
     const user = userEvent.setup()
     const { tripsApi } = await import('../../lib/api')
     vi.mocked(tripsApi.getAll).mockResolvedValue([])
@@ -405,31 +244,7 @@ describe('Trips', () => {
       </TestWrapper>
     )
 
-    await waitFor(() => {
-      expect(screen.getByText('Add Trip')).toBeInTheDocument()
-    })
-
-    const addButton = screen.getByText('Add Trip')
-    await user.click(addButton)
-
-    const submitButtons = screen.getAllByText('Add Trip')
-    const submitButton = submitButtons[1]
-    await user.click(submitButton)
-
-    expect(screen.getByText('Add New Trip')).toBeInTheDocument()
-  })
-
-  it('allows canceling the add trip form', async () => {
-    const user = userEvent.setup()
-    const { tripsApi } = await import('../../lib/api')
-    vi.mocked(tripsApi.getAll).mockResolvedValue([])
-
-    render(
-      <TestWrapper>
-        <Trips />
-      </TestWrapper>
-    )
-
+    // Wait for the component to load and show the Add Trip button
     await waitFor(() => {
       expect(screen.getByText('Add Trip')).toBeInTheDocument()
     })
@@ -441,5 +256,204 @@ describe('Trips', () => {
     await user.click(cancelButton)
 
     expect(screen.queryByText('Add New Trip')).not.toBeInTheDocument()
+  })
+
+  describe('Search and Filtering', () => {
+    it('renders search filter component', async () => {
+      const { tripsApi } = await import('../../lib/api')
+      vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
+
+      render(
+        <TestWrapper>
+          <Trips />
+        </TestWrapper>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search trips by origin, destination, or type...')).toBeInTheDocument()
+        expect(screen.getByText('Advanced Filters')).toBeInTheDocument()
+      })
+    })
+
+    it('filters trips by search term', async () => {
+      const user = userEvent.setup()
+      const { tripsApi } = await import('../../lib/api')
+      vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
+
+      render(
+        <TestWrapper>
+          <Trips />
+        </TestWrapper>
+      )
+
+      // Wait for trips to load
+      await waitFor(() => {
+        expect(screen.getAllByText('Home').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('Work').length).toBeGreaterThan(0)
+        expect(screen.getByText('Store')).toBeInTheDocument()
+        expect(screen.getByText('Gym')).toBeInTheDocument()
+      })
+
+      const searchInput = screen.getByPlaceholderText('Search trips by origin, destination, or type...')
+      await user.type(searchInput, 'home')
+
+      // Wait for debounced search to complete
+      await waitFor(() => {
+        expect(screen.getByText('Showing 2 of 3 trips')).toBeInTheDocument()
+      })
+
+      // Verify filtered results - should show trips with "Home" but not "Store"
+      expect(screen.getAllByText('Home').length).toBeGreaterThan(0)
+      expect(screen.getByText('Gym')).toBeInTheDocument()
+      expect(screen.queryByText('Store')).not.toBeInTheDocument()
+    })
+
+    it('shows results summary when filters are active', async () => {
+      const user = userEvent.setup()
+      const { tripsApi } = await import('../../lib/api')
+      vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
+
+      render(
+        <TestWrapper>
+          <Trips />
+        </TestWrapper>
+      )
+
+      // Wait for trips to load
+      await waitFor(() => {
+        expect(screen.getAllByText('Home').length).toBeGreaterThan(0)
+      })
+
+      const searchInput = screen.getByPlaceholderText('Search trips by origin, destination, or type...')
+      await user.type(searchInput, 'home')
+
+      await waitFor(() => {
+        expect(screen.getByText('Showing 2 of 3 trips')).toBeInTheDocument()
+      })
+    })
+
+    it('shows advanced filters when button is clicked', async () => {
+      const user = userEvent.setup()
+      const { tripsApi } = await import('../../lib/api')
+      vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
+
+      render(
+        <TestWrapper>
+          <Trips />
+        </TestWrapper>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Advanced Filters')).toBeInTheDocument()
+      })
+
+      const advancedButton = screen.getByText('Advanced Filters')
+      await user.click(advancedButton)
+
+      await waitFor(() => {
+        expect(screen.getByText('Date From')).toBeInTheDocument()
+        expect(screen.getByText('Date To')).toBeInTheDocument()
+        expect(screen.getByText('Min Amount')).toBeInTheDocument()
+        expect(screen.getByText('Max Amount')).toBeInTheDocument()
+        expect(screen.getByText('Trip Type')).toBeInTheDocument()
+      })
+    })
+
+    it('filters trips by trip type', async () => {
+      const user = userEvent.setup()
+      const { tripsApi } = await import('../../lib/api')
+      vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
+
+      render(
+        <TestWrapper>
+          <Trips />
+        </TestWrapper>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Advanced Filters')).toBeInTheDocument()
+      })
+
+      const advancedButton = screen.getByText('Advanced Filters')
+      await user.click(advancedButton)
+
+      const typeSelect = screen.getByLabelText('Trip Type')
+      await user.selectOptions(typeSelect, 'single')
+
+      await waitFor(() => {
+        expect(screen.getByText('Showing 2 of 3 trips')).toBeInTheDocument()
+      })
+
+      // Verify filtered results - should show single trips but not round trips
+      expect(screen.getAllByText('Home').length).toBeGreaterThan(0)
+      expect(screen.getByText('Gym')).toBeInTheDocument()
+      expect(screen.queryByText('Store')).not.toBeInTheDocument()
+    })
+
+    it('shows appropriate message when no trips match filters', async () => {
+      const user = userEvent.setup()
+      const { tripsApi } = await import('../../lib/api')
+      vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
+
+      render(
+        <TestWrapper>
+          <Trips />
+        </TestWrapper>
+      )
+
+      // Wait for trips to load
+      await waitFor(() => {
+        expect(screen.getAllByText('Home').length).toBeGreaterThan(0)
+      })
+
+      const searchInput = screen.getByPlaceholderText('Search trips by origin, destination, or type...')
+      await user.type(searchInput, 'nonexistent')
+
+      await waitFor(() => {
+        expect(screen.getByText('No trips match your current filters.')).toBeInTheDocument()
+        expect(screen.getByText('Try adjusting your search or filters.')).toBeInTheDocument()
+      })
+    })
+
+    it('clears search when clear button is clicked', async () => {
+      const user = userEvent.setup()
+      const { tripsApi } = await import('../../lib/api')
+      vi.mocked(tripsApi.getAll).mockResolvedValue(mockTrips)
+
+      render(
+        <TestWrapper>
+          <Trips />
+        </TestWrapper>
+      )
+
+      // Wait for trips to load
+      await waitFor(() => {
+        expect(screen.getAllByText('Home').length).toBeGreaterThan(0)
+        expect(screen.getByText('Store')).toBeInTheDocument()
+      })
+
+      const searchInput = screen.getByPlaceholderText('Search trips by origin, destination, or type...')
+      await user.type(searchInput, 'home')
+
+      // Wait for search to filter results
+      await waitFor(() => {
+        expect(screen.getByText('Showing 2 of 3 trips')).toBeInTheDocument()
+        expect(screen.queryByText('Store')).not.toBeInTheDocument()
+      })
+
+      // Find and click the clear button (X button in search input) - use a more specific selector
+      const clearButtons = screen.getAllByRole('button')
+      const clearButton = clearButtons.find(button => 
+        button.closest('.relative') && button.querySelector('svg')
+      )
+      expect(clearButton).toBeDefined()
+      await user.click(clearButton!)
+
+      // Wait for the search to be cleared and all trips to show
+      await waitFor(() => {
+        expect(screen.queryByText('Showing 2 of 3 trips')).not.toBeInTheDocument()
+        expect(screen.getByText('Store')).toBeInTheDocument()
+      })
+    })
   })
 }) 

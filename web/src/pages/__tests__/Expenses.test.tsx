@@ -66,7 +66,7 @@ describe('Expenses', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Expenses')).toBeInTheDocument()
-      expect(screen.getByText(/Track your reimbursable expenses/)).toBeInTheDocument()
+      expect(screen.getByText(/Track your work-related expenses/)).toBeInTheDocument()
     })
   })
 

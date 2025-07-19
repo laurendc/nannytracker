@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from '../../App'
@@ -71,14 +71,16 @@ describe('App', () => {
     expect(screen.getByRole('main')).toBeInTheDocument()
   })
 
-  it('renders dashboard by default', () => {
+  it('renders dashboard by default', async () => {
     render(
       <TestWrapper>
         <App />
       </TestWrapper>
     )
 
-    // Dashboard should be the default route
-    expect(screen.getByText(/Overview of your mileage and expense tracking/)).toBeInTheDocument()
+    // Dashboard should be the default route - wait for it to load
+    await waitFor(() => {
+      expect(screen.getByText(/Overview of your mileage and expense tracking/)).toBeInTheDocument()
+    })
   })
 }) 

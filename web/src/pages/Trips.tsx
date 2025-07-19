@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Plus, Edit, Trash2, Car, MapPin, Calendar, ArrowRight } from 'lucide-react'
 import { tripsApi } from '../lib/api'
 import type { Trip } from '../types'
+import SearchFilter, { type FilterOptions } from '../components/SearchFilter'
+import { filterTrips, getDefaultFilters, saveFiltersToLocalStorage, loadFiltersFromLocalStorage } from '../utils/filterUtils'
 
 export default function Trips() {
   const [isAddingTrip, setIsAddingTrip] = useState(false)
   const [editingTrip, setEditingTrip] = useState<{trip: Trip, index: number} | null>(null)
+  const [filters, setFilters] = useState<FilterOptions>(() => loadFiltersFromLocalStorage('trips-filters'))
   const [newTrip, setNewTrip] = useState<Partial<Trip>>({
     date: '',
     origin: '',
@@ -21,6 +24,14 @@ export default function Trips() {
     queryKey: ['trips'],
     queryFn: tripsApi.getAll,
   })
+
+  // Filter trips based on current filters
+  const filteredTrips = filterTrips(trips, filters)
+
+  // Save filters to localStorage when they change
+  useEffect(() => {
+    saveFiltersToLocalStorage('trips-filters', filters)
+  }, [filters])
 
   const createTripMutation = useMutation({
     mutationFn: tripsApi.create,
@@ -74,6 +85,10 @@ export default function Trips() {
     }
   }
 
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    setFilters(newFilters)
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -110,6 +125,22 @@ export default function Trips() {
           Add Trip
         </button>
       </div>
+
+      {/* Search and Filter */}
+      <SearchFilter
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        placeholder="Search trips by origin, destination, or type..."
+      />
+
+      {/* Results Summary */}
+      {filters.search || filters.dateFrom || filters.dateTo || filters.type !== 'all' ? (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            Showing {filteredTrips.length} of {trips.length} trips
+          </p>
+        </div>
+      ) : null}
 
       {/* Add Trip Form - Mobile-optimized */}
       {isAddingTrip && (
@@ -295,14 +326,18 @@ export default function Trips() {
 
       {/* Trips List - Mobile-first cards */}
       <div className="space-y-4">
-        {trips.length === 0 ? (
+        {filteredTrips.length === 0 ? (
           <div className="card text-center py-8">
             <Car className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-500 text-sm sm:text-base">No trips recorded yet.</p>
-            <p className="text-gray-400 text-xs sm:text-sm mt-2">Add your first trip to get started!</p>
+            <p className="text-gray-500 text-sm sm:text-base">
+              {trips.length === 0 ? 'No trips recorded yet.' : 'No trips match your current filters.'}
+            </p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-2">
+              {trips.length === 0 ? 'Add your first trip to get started!' : 'Try adjusting your search or filters.'}
+            </p>
           </div>
         ) : (
-          trips.map((trip, index) => (
+          filteredTrips.map((trip, index) => (
             <div key={index} className="card hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex-1 mb-4 sm:mb-0">
@@ -317,7 +352,7 @@ export default function Trips() {
                   </div>
                   <div className="flex items-center mb-2">
                     <MapPin className="w-4 h-4 text-gray-400 mr-2" />
-                    <div className="flex items-center text-sm sm:text-base">
+                    <div className="flex items-center text-sm sm:text-base" data-testid="trip-row">
                       <span className="font-medium text-gray-900 truncate">{trip.origin}</span>
                       <ArrowRight className="w-4 h-4 mx-2 text-gray-400" />
                       <span className="font-medium text-gray-900 truncate">{trip.destination}</span>

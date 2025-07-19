@@ -1,17 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Plus, Edit, Trash2, Receipt, Calendar, DollarSign } from 'lucide-react'
 import { expensesApi } from '../lib/api'
 import type { Expense } from '../types'
+import SearchFilter, { type FilterOptions } from '../components/SearchFilter'
+import { filterExpenses, getDefaultFilters, saveFiltersToLocalStorage, loadFiltersFromLocalStorage } from '../utils/filterUtils'
 
 export default function Expenses() {
   const [isAddingExpense, setIsAddingExpense] = useState(false)
   const [editingExpense, setEditingExpense] = useState<{expense: Expense, index: number} | null>(null)
+  const [filters, setFilters] = useState<FilterOptions>(() => loadFiltersFromLocalStorage('expenses-filters'))
   const [newExpense, setNewExpense] = useState<Partial<Expense>>({
     date: '',
-    amount: 0,
     description: '',
+    amount: 0,
   })
 
   const queryClient = useQueryClient()
@@ -21,12 +24,23 @@ export default function Expenses() {
     queryFn: expensesApi.getAll,
   })
 
+  // Filter expenses based on current filters
+  const filteredExpenses = filterExpenses(expenses, filters)
+
+  // Calculate total expenses
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+
+  // Save filters to localStorage when they change
+  useEffect(() => {
+    saveFiltersToLocalStorage('expenses-filters', filters)
+  }, [filters])
+
   const createExpenseMutation = useMutation({
     mutationFn: expensesApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
       setIsAddingExpense(false)
-      setNewExpense({ date: '', amount: 0, description: '' })
+      setNewExpense({ date: '', description: '', amount: 0 })
     },
   })
 
@@ -47,12 +61,11 @@ export default function Expenses() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const amount = newExpense.amount || 0
-    if (newExpense.date && amount > 0 && newExpense.description) {
+    if (newExpense.date && newExpense.description && newExpense.amount !== undefined) {
       createExpenseMutation.mutate({
         date: newExpense.date,
-        amount: amount,
         description: newExpense.description,
+        amount: newExpense.amount,
       })
     }
   }
@@ -73,7 +86,9 @@ export default function Expenses() {
     }
   }
 
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    setFilters(newFilters)
+  }
 
   if (isLoading) {
     return (
@@ -100,7 +115,7 @@ export default function Expenses() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Expenses</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
-            Track your reimbursable expenses
+            Track your work-related expenses
           </p>
         </div>
         <button
@@ -112,18 +127,34 @@ export default function Expenses() {
         </button>
       </div>
 
-      {/* Total Expenses Summary - Mobile-optimized */}
-      <div className="card">
+      {/* Search and Filter */}
+      <SearchFilter
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        placeholder="Search expenses by description or amount..."
+      />
+
+      {/* Total Expenses Summary */}
+      <div className="card bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs sm:text-sm font-medium text-gray-600">Total Expenses</p>
-            <p className="text-2xl sm:text-3xl font-bold text-gray-900">${totalExpenses.toFixed(2)}</p>
+            <h3 className="text-lg font-semibold text-gray-900">Total Expenses</h3>
+            <p className="text-sm text-gray-600">All recorded expenses</p>
           </div>
-          <div className="p-2 sm:p-3 bg-yellow-100 rounded-lg touch-target">
-            <Receipt className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" />
+          <div className="text-right">
+            <p className="text-2xl font-bold text-gray-900">${totalExpenses.toFixed(2)}</p>
           </div>
         </div>
       </div>
+
+      {/* Results Summary */}
+      {filters.search || filters.dateFrom || filters.dateTo || filters.category ? (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            Showing {filteredExpenses.length} of {expenses.length} expenses
+          </p>
+        </div>
+      ) : null}
 
       {/* Add Expense Form - Mobile-optimized */}
       {isAddingExpense && (
@@ -151,12 +182,8 @@ export default function Expenses() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={newExpense.amount === 0 ? '' : newExpense.amount}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    const numValue = value === '' ? 0 : parseFloat(value)
-                    setNewExpense({ ...newExpense, amount: isNaN(numValue) ? 0 : numValue })
-                  }}
+                  value={newExpense.amount}
+                  onChange={(e) => setNewExpense({ ...newExpense, amount: parseFloat(e.target.value) || 0 })}
                   className="input"
                   placeholder="0.00"
                   required
@@ -184,7 +211,7 @@ export default function Expenses() {
                 type="button"
                 onClick={() => {
                   setIsAddingExpense(false)
-                  setNewExpense({ date: '', amount: 0, description: '' })
+                  setNewExpense({ date: '', description: '', amount: 0 })
                 }}
                 className="btn btn-secondary touch-target"
               >
@@ -269,14 +296,18 @@ export default function Expenses() {
 
       {/* Expenses List - Mobile-first cards */}
       <div className="space-y-4">
-        {expenses.length === 0 ? (
+        {filteredExpenses.length === 0 ? (
           <div className="card text-center py-8">
             <Receipt className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-500 text-sm sm:text-base">No expenses recorded yet.</p>
-            <p className="text-gray-400 text-xs sm:text-sm mt-2">Add your first expense to get started!</p>
+            <p className="text-gray-500 text-sm sm:text-base">
+              {expenses.length === 0 ? 'No expenses recorded yet.' : 'No expenses match your current filters.'}
+            </p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-2">
+              {expenses.length === 0 ? 'Add your first expense to get started!' : 'Try adjusting your search or filters.'}
+            </p>
           </div>
         ) : (
-          expenses.map((expense, index) => (
+          filteredExpenses.map((expense, index) => (
             <div key={index} className="card hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex-1 mb-4 sm:mb-0">
@@ -288,7 +319,7 @@ export default function Expenses() {
                   </div>
                   <div className="flex items-center mb-2">
                     <Receipt className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                    <span className="text-sm sm:text-base font-medium text-gray-900">
                       {expense.description}
                     </span>
                   </div>
