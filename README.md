@@ -72,33 +72,20 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
 
 ## Installation
 
-### Option 1: Download Pre-built Binary (Recommended)
+### Build from Source
 
-1. Visit the [releases page](https://github.com/laurendc/nannytracker/releases)
-2. Download the appropriate binary for your platform:
-   - **Linux**: `nannytracker-linux-amd64` or `nannytracker-linux-arm64`
-   - **macOS**: `nannytracker-darwin-amd64` or `nannytracker-darwin-arm64`
+1. **Prerequisites:**
+   - Go 1.23+ installed on your system
+   - Node.js 18+ and npm (for web frontend)
+   - Git for cloning the repository
 
-3. Make the binary executable (Linux/macOS):
-   ```bash
-   chmod +x nannytracker-linux-amd64
-   ```
-
-4. Run the application:
-   ```bash
-   # Terminal application
-   ./nannytracker-linux-amd64
-   ```
-
-### Option 2: Build from Source
-
-1. Clone the repository:
+2. **Clone the repository:**
    ```bash
    git clone https://github.com/laurendc/nannytracker.git
    cd nannytracker
    ```
 
-2. Install dependencies:
+3. **Install dependencies:**
    ```bash
    # Go dependencies
    go mod download
@@ -107,13 +94,19 @@ A comprehensive application for tracking mileage, expenses, and calculating reim
    cd web && npm install
    ```
 
-3. Build the application:
+4. **Build the application:**
    ```bash
    # Build terminal application
    go build -o nannytracker ./cmd/tui
    
-   # Or use the Makefile
+   # Or use the Makefile for development
    make build
+   ```
+
+5. **Run the application:**
+   ```bash
+   # Terminal application
+   ./nannytracker
    ```
 
 ## Configuration
@@ -239,21 +232,24 @@ make fmt
 
 ### Build Workflow
 
-NannyTracker uses an optimized build workflow to balance development speed with cross-platform support:
+NannyTracker uses a streamlined build workflow optimized for development and source compilation:
 
 ```bash
 # Development builds (fast, current platform)
 make build              # Standard development build
 ./scripts/dev-build.sh  # Quick build with verification
 
-# Release builds (all platforms)
-make build-all          # Full cross-platform build for releases
+# Development tools
+make deps               # Install dependencies
+make test               # Run tests
+make lint               # Run linter
+make fmt                # Format code
 ```
 
 **Build Strategy:**
-- **Development**: Fast Linux builds for daily work
-- **CI/CD**: Linux-only builds for PR checks (faster)
-- **Releases**: Full cross-platform builds (Linux, macOS)
+- **Development**: Fast builds for daily work
+- **CI/CD**: Automated testing and quality checks
+- **Source Distribution**: Users compile from source for their platform
 
 ### Running Tests
 
@@ -273,7 +269,7 @@ cd web && npm test
 
 ### Release Management
 
-NannyTracker uses a comprehensive release management system with automated builds and versioning.
+NannyTracker uses a streamlined release management system focused on source distribution and versioning.
 
 #### Creating a Release
 
@@ -284,9 +280,9 @@ make release VERSION=v1.0.0
 
 This will:
 1. Run all tests
-2. Build binaries for all platforms
-3. Create a git tag
-4. Trigger GitHub Actions to create a release
+2. Create a git tag
+3. Trigger GitHub Actions to create a release
+4. Update documentation and changelog
 
 #### Version Information
 

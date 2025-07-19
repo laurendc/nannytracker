@@ -34,20 +34,19 @@ jobs:
       - name: Run all tests
         run: make test
 
-      - name: Build all platform binaries (release)
-        # Full cross-platform build for release distribution
-        run: make build-all
+      - name: Build for current platform
+        # Build for verification purposes
+        run: make build
 
-      - name: Verify local binaries
+      - name: Verify build
         run: |
-          echo "🔍 Verifying local binaries..."
-          ./dist/nannytracker-linux-amd64 --version
-          echo "✅ Local binary verification passed"
+          echo "🔍 Verifying build..."
+          ./nannytracker --version
+          echo "✅ Build verification passed"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/*
           generate_release_notes: true
           draft: false
         env:
@@ -91,6 +90,6 @@ jobs:
           echo "✅ **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Verified Artifacts:" >> $GITHUB_STEP_SUMMARY
-          echo "- TUI Application (4 platforms)" >> $GITHUB_STEP_SUMMARY
+          echo "- Source code build verification" >> $GITHUB_STEP_SUMMARY
           echo "- Version output validation" >> $GITHUB_STEP_SUMMARY
-          echo "- File integrity checks" >> $GITHUB_STEP_SUMMARY 
+          echo "- Test suite execution" >> $GITHUB_STEP_SUMMARY 

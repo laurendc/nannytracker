@@ -4,12 +4,11 @@ This document outlines the release management process for NannyTracker, includin
 
 ## Overview
 
-NannyTracker uses a comprehensive release management system that includes:
+NannyTracker uses a streamlined release management system that includes:
 
 - **Semantic Versioning (SemVer)** for version numbers
 - **Automated release workflow** with GitHub Actions
-- **Cross-platform binary distribution**
-- **Version tracking** throughout the application
+- **Source distribution** with version tracking
 - **Changelog management** for tracking changes
 
 ## Versioning Strategy
@@ -57,7 +56,7 @@ make release VERSION=v1.0.0
 
 This command will:
 1. Run all tests
-2. Build binaries for all platforms
+2. Build for current platform
 3. Create a git tag
 4. Push the tag to trigger GitHub Actions
 
@@ -68,8 +67,8 @@ This command will:
 # 2. Run tests
 make test
 
-# 3. Build for all platforms
-make build-all
+# 3. Build for current platform
+make build
 
 # 4. Create and push tag
 git tag -a v1.0.0 -m "Release v1.0.0"
@@ -80,17 +79,12 @@ git push origin v1.0.0
 
 When a tag is pushed, GitHub Actions automatically:
 
-1. **Builds binaries** for multiple platforms:
-   - Linux (AMD64, ARM64)
-   - macOS (AMD64, ARM64)
-   - Windows (AMD64)
-
-2. **Creates a GitHub release** with:
+1. **Creates a GitHub release** with:
    - Release notes from commits
-   - Binary downloads
    - Version information
+   - Source code tag
 
-3. **Uploads assets** to the release
+2. **Updates documentation** and changelog
 
 ## Version Information
 
