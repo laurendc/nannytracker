@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Continued refinement of mobile-first responsive design
 - Performance optimizations and code quality improvements
+- **Distribution Model**: Switched from binary distribution to source-only distribution
+- **Build System**: Simplified build workflow to focus on source compilation
+- **Release Process**: Streamlined release management without binary artifacts
 
 ### Fixed
 - Minor bug fixes and edge case handling

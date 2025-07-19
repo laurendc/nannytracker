@@ -8,8 +8,7 @@ VERSION ?= $(shell git describe --tags --always --dirty)
 BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 GIT_COMMIT := $(shell git rev-parse --short HEAD)
 
-# Platform definitions - DRY principle
-PLATFORMS := linux-amd64 linux-arm64 darwin-amd64 darwin-arm64
+# Build configuration for source distribution
 
 # Build flags
 LDFLAGS := -X github.com/laurendc/nannytracker/pkg/version.Version=$(VERSION) \
@@ -22,9 +21,7 @@ help:
 	@echo "========================="
 	@echo "Build Targets:"
 	@echo "  build         - Build for current platform (development)"
-	@echo "  build-dev     - Build for development (Linux only, fast)"
-	@echo "  build-ci      - Build for CI (Linux only, optimized)"
-	@echo "  build-all     - Build for all supported platforms (releases)"
+	@echo "  build-dev     - Build for development (fast)"
 	@echo "  clean         - Clean build artifacts"
 	@echo ""
 	@echo "Test Targets:"
@@ -36,7 +33,6 @@ help:
 	@echo ""
 	@echo "Release Targets:"
 	@echo "  release       - Create a new release (requires VERSION=)"
-	@echo "  verify-release- Verify release artifacts (requires VERSION=)"
 	@echo "  version       - Show current version information"
 	@echo ""
 	@echo "Development Targets:"
@@ -56,29 +52,11 @@ build:
 	go build -ldflags="$(LDFLAGS)" -o nannytracker ./cmd/tui
 	@echo "Build complete."
 
-# Build for development (Linux only, fast)
+# Build for development (fast)
 build-dev:
-	@echo "Building for development (Linux only)..."
+	@echo "Building for development..."
 	go build -ldflags="$(LDFLAGS)" -o nannytracker ./cmd/tui
 	@echo "Development build complete."
-
-# Build for all supported platforms (release builds)
-build-all:
-	@echo "Building for all platforms..."
-	@mkdir -p dist
-	@for platform in $(PLATFORMS); do \
-		GOOS=$${platform%-*} GOARCH=$${platform#*-} go build -ldflags="$(LDFLAGS)" \
-			-o dist/nannytracker-$$platform ./cmd/tui; \
-	done
-	@echo "Build complete. Binaries are in the dist/ directory."
-
-# Build for CI (Linux only, optimized for speed)
-build-ci:
-	@echo "Building for CI (Linux only)..."
-	@mkdir -p dist
-	GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" \
-		-o dist/nannytracker-linux-amd64 ./cmd/tui
-	@echo "CI build complete."
 
 # Run all tests (backend and frontend)
 test: test-backend test-frontend
@@ -131,9 +109,9 @@ release:
 	@echo "Running tests..."
 	@make test
 	
-	# Build for all platforms
-	@echo "Building for all platforms..."
-	@make build-all
+	# Build for current platform
+	@echo "Building for current platform..."
+	@make build
 	
 	# Create git tag
 	@echo "Creating git tag..."
@@ -141,7 +119,7 @@ release:
 	git push origin $(VERSION)
 	
 	@echo "Release $(VERSION) created successfully!"
-	@echo "GitHub Actions will automatically create a release with binaries."
+	@echo "GitHub Actions will automatically create a release."
 
 # Show version information
 version:
@@ -157,14 +135,7 @@ version:
 		echo "  TUI: Binary not built"; \
 	fi
 
-# Verify release artifacts for a specific version
-verify-release:
-	@if [ -z "$(VERSION)" ]; then \
-		echo "Error: VERSION is required. Usage: make verify-release VERSION=v1.0.0"; \
-		exit 1; \
-	fi
-	@echo "Verifying release artifacts for $(VERSION)..."
-	@./scripts/verify-release.sh $(VERSION)
+
 
 # Development dependencies
 deps:
