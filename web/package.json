@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "security": "npm audit --audit-level=moderate",
+    "security:audit": "npm audit --audit-level=moderate"
   },
   "dependencies": {
     "@tanstack/react-query": "^4.29.5",

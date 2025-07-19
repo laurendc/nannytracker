@@ -31,8 +31,22 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+      - name: Install Go dependencies
+        run: go mod download
+
+      - name: Install Node.js dependencies
+        run: cd web && npm ci
+
+      - name: Install development tools
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+
       - name: Run all tests
         run: make test
+
+      - name: Run security checks
+        run: make security
 
       - name: Build for current platform
         # Build for verification purposes

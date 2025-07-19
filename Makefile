@@ -157,7 +157,10 @@ fmt:
 # Security scan
 security:
 	@echo "Running security scan..."
+	@echo "Scanning Go code..."
 	gosec ./...
+	@echo "Scanning Node.js dependencies..."
+	cd web && npm audit --audit-level=moderate
 
 # Check for outdated dependencies
 deps-check:
