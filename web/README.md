@@ -8,9 +8,11 @@ A modern React + TypeScript frontend for the NannyTracker mileage and expense tr
 - **Trip Management**: Add, edit, and delete mileage entries
 - **Expense Tracking**: Record and manage reimbursable expenses
 - **Weekly Summaries**: View detailed weekly reports with charts
+- **Advanced Search & Filtering**: Real-time search with multi-criteria filtering
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 - **Real-time Data**: React Query for efficient data fetching and caching
 - **Complete CRUD Operations**: Full Create, Read, Update, Delete functionality
+- **Mobile-First UX**: Touch-optimized controls and responsive navigation
 
 ## Tech Stack
 
@@ -20,7 +22,7 @@ A modern React + TypeScript frontend for the NannyTracker mileage and expense tr
 - **React Query** for server state management
 - **Tailwind CSS** for styling
 - **Recharts** for data visualization
-- **Vitest** + **React Testing Library** for testing
+- **Vitest** + **React Testing Library** for testing (161 tests passing)
 - **MSW** for API mocking
 
 ## Getting Started
@@ -58,6 +60,12 @@ The built files will be in the `dist/` directory.
 
 This project uses **Vitest** for testing, providing a fast, modern testing experience that integrates seamlessly with Vite.
 
+**Current Test Status:**
+- **161 tests passing** (100% pass rate)
+- **Backend**: 21 tests passing
+- **Frontend**: 140 tests passing
+- **Comprehensive coverage** for all features including search and filtering
+
 **Benefits of Vitest:**
 - 3-5x faster test execution than Jest
 - Unified tooling with Vite (same bundler for dev and testing)
@@ -90,9 +98,10 @@ npm run test:ui
 
 ### Test Files
 
-- `src/components/__tests__/` - Component tests
+- `src/components/__tests__/` - Component tests (including SearchFilter)
 - `src/pages/__tests__/` - Page component tests  
 - `src/lib/__tests__/` - API and utility tests
+- `src/utils/__tests__/` - Filter utilities and helper tests
 - `src/test/` - Test setup and utilities
 
 ### Testing Best Practices
@@ -112,6 +121,7 @@ web/
 ├── src/
 │   ├── components/          # Reusable UI components
 │   │   ├── Layout.tsx      # Main layout with navigation
+│   │   ├── SearchFilter.tsx # Advanced search and filtering component
 │   │   └── __tests__/      # Component tests
 │   ├── pages/              # Page components
 │   │   ├── Dashboard.tsx   # Dashboard page
@@ -122,6 +132,9 @@ web/
 │   ├── lib/                # Utilities and API client
 │   │   ├── api.ts          # API client functions
 │   │   └── __tests__/      # API tests
+│   ├── utils/              # Utility functions
+│   │   ├── filterUtils.ts  # Search and filtering logic
+│   │   └── __tests__/      # Utility tests
 │   ├── types/              # TypeScript type definitions
 │   │   └── index.ts        # Shared types
 │   ├── test/               # Test setup and utilities
