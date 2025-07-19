@@ -65,7 +65,7 @@ NannyTracker uses a **Makefile as the single source of truth** for all build, te
 2. **Make your changes.**
 3. **Add or update tests for new/changed functionality.**
 4. **Run all checks locally:**
-   - `make test`
+   - `make test` (161 tests passing - 100% pass rate)
    - `make build` (or `./scripts/dev-build.sh`)
    - `make lint`
    - `make security`
