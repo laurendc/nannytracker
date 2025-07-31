@@ -1,4 +1,4 @@
-import { rest } from 'msw'
+import { http, HttpResponse } from 'msw'
 import type { Trip, Expense, WeeklySummary } from '../../types'
 
 const baseUrl = '/api'
@@ -47,66 +47,48 @@ const mockSummaries: WeeklySummary[] = [
 
 export const handlers = [
   // Health check
-  rest.get(`${baseUrl}/health`, (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        status: 'healthy',
-        service: 'nannytracker-api',
-      })
-    )
+  http.get(`${baseUrl}/health`, () => {
+    return HttpResponse.json({
+      status: 'healthy',
+      service: 'nannytracker-api',
+    }, { status: 200 })
   }),
 
   // Trips endpoints
-  rest.get(`${baseUrl}/trips`, (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        trips: mockTrips,
-        count: mockTrips.length,
-      })
-    )
+  http.get(`${baseUrl}/trips`, () => {
+    return HttpResponse.json({
+      trips: mockTrips,
+      count: mockTrips.length,
+    }, { status: 200 })
   }),
 
-  rest.post(`${baseUrl}/trips`, async (req, res, ctx) => {
-    const newTrip = await req.json()
+  http.post(`${baseUrl}/trips`, async ({ request }) => {
+    const newTrip = await request.json()
     const trip: Trip = {
       ...newTrip,
       miles: 5.0, // Mock calculated miles
     }
-    return res(
-      ctx.status(201),
-      ctx.json(trip)
-    )
+    return HttpResponse.json(trip, { status: 201 })
   }),
 
   // Expenses endpoints
-  rest.get(`${baseUrl}/expenses`, (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        expenses: mockExpenses,
-        count: mockExpenses.length,
-      })
-    )
+  http.get(`${baseUrl}/expenses`, () => {
+    return HttpResponse.json({
+      expenses: mockExpenses,
+      count: mockExpenses.length,
+    }, { status: 200 })
   }),
 
-  rest.post(`${baseUrl}/expenses`, async (req, res, ctx) => {
-    const expense = await req.json()
-    return res(
-      ctx.status(201),
-      ctx.json(expense)
-    )
+  http.post(`${baseUrl}/expenses`, async ({ request }) => {
+    const expense = await request.json()
+    return HttpResponse.json(expense, { status: 201 })
   }),
 
   // Summaries endpoints
-  rest.get(`${baseUrl}/summaries`, (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        summaries: mockSummaries,
-        count: mockSummaries.length,
-      })
-    )
+  http.get(`${baseUrl}/summaries`, () => {
+    return HttpResponse.json({
+      summaries: mockSummaries,
+      count: mockSummaries.length,
+    }, { status: 200 })
   }),
 ] 
