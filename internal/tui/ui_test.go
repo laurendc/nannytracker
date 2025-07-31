@@ -2077,6 +2077,81 @@ func TestTemplateToTripConversion(t *testing.T) {
 	}
 }
 
+func TestTemplateUsageWithUKey(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// Add a test template
+	template := model.TripTemplate{
+		Name:        "Work Commute",
+		Origin:      "123 Home St",
+		Destination: "456 Work Ave",
+		TripType:    "single",
+		Notes:       "Regular work commute",
+	}
+	uiModel.TripTemplates = append(uiModel.TripTemplates, template)
+	uiModel.Data.TripTemplates = uiModel.TripTemplates
+
+	// Select the template
+	uiModel.SelectedTemplate = 0
+
+	// Set active tab to Templates (required for template-to-trip conversion)
+	uiModel.ActiveTab = TabTemplates
+
+	// Trigger template-to-trip conversion with "U" key
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'U'}}
+	model, _ := uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	// Verify we switched to Trips tab
+	if uiModel.ActiveTab != TabTrips {
+		t.Errorf("Expected active tab to be Trips, got %d", uiModel.ActiveTab)
+	}
+
+	// Verify we're in date input mode
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date', got '%s'", uiModel.Mode)
+	}
+
+	// Verify the current trip has template data
+	if uiModel.CurrentTrip.Origin != template.Origin {
+		t.Errorf("Expected origin to be '%s', got '%s'", template.Origin, uiModel.CurrentTrip.Origin)
+	}
+	if uiModel.CurrentTrip.Destination != template.Destination {
+		t.Errorf("Expected destination to be '%s', got '%s'", template.Destination, uiModel.CurrentTrip.Destination)
+	}
+	if uiModel.CurrentTrip.Type != template.TripType {
+		t.Errorf("Expected type to be '%s', got '%s'", template.TripType, uiModel.CurrentTrip.Type)
+	}
+	if uiModel.CurrentTrip.Miles != 0 {
+		t.Errorf("Expected initial miles to be 0, got %.2f", uiModel.CurrentTrip.Miles)
+	}
+
+	// Test that the "u" key (lowercase) also works
+	uiModel.SelectedTemplate = 0
+	uiModel.ActiveTab = TabTemplates
+
+	msg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}}
+	var updatedModel tea.Model
+	updatedModel, _ = uiModel.Update(msg)
+	uiModel = updatedModel.(*Model)
+
+	// Verify we switched to Trips tab
+	if uiModel.ActiveTab != TabTrips {
+		t.Errorf("Expected active tab to be Trips, got %d", uiModel.ActiveTab)
+	}
+
+	// Verify we're in date input mode
+	if uiModel.Mode != "date" {
+		t.Errorf("Expected mode to be 'date', got '%s'", uiModel.Mode)
+	}
+
+	// Verify the current trip has template data
+	if uiModel.CurrentTrip.Origin != template.Origin {
+		t.Errorf("Expected origin to be '%s', got '%s'", template.Origin, uiModel.CurrentTrip.Origin)
+	}
+}
+
 func TestTemplateSorting(t *testing.T) {
 	uiModel, cleanup := setupTestUI(t)
 	defer cleanup()

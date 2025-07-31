@@ -1152,6 +1152,31 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SelectedTemplate = -1
 				return m, cmd
 			}
+		case tea.KeyRunes:
+			// Handle single key presses like "U" for template usage
+			if len(msg.Runes) == 1 {
+				switch msg.Runes[0] {
+				case 'u', 'U':
+					if m.ActiveTab == TabTemplates && m.SelectedTemplate >= 0 {
+						// Create a new trip from the selected template
+						template := m.TripTemplates[m.SelectedTemplate]
+						m.CurrentTrip = model.Trip{
+							Origin:      template.Origin,
+							Destination: template.Destination,
+							Type:        template.TripType,
+							Miles:       0, // Will be calculated when the trip is saved
+						}
+						m.Mode = "date"
+						m.TextInput.Reset()
+						m.TextInput.Placeholder = "Enter date (YYYY-MM-DD)..."
+						// Switch to trips tab
+						m.ActiveTab = TabTrips
+						m.SelectedTrip = -1
+						m.SelectedTemplate = -1
+						return m, cmd
+					}
+				}
+			}
 		}
 
 		// Handle search input
