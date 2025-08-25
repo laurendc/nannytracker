@@ -808,8 +808,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case tea.KeyCtrlT:
 			// Enter template creation mode
-			if m.Mode == "date" {
+			// Allow template creation from date mode or any template edit mode
+			if m.Mode == "date" || strings.HasPrefix(m.Mode, "template_edit") {
 				m.Mode = "template_name"
+				m.EditIndex = -1                         // Reset edit index for new template creation
+				m.CurrentTemplate = model.TripTemplate{} // Reset current template
 				m.TextInput.Reset()
 				m.TextInput.Placeholder = "Enter template name..."
 			}
@@ -1154,7 +1157,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case tea.KeyRunes:
 			// Handle single key presses like "U" for template usage
-			if len(msg.Runes) == 1 {
+			// Only process these shortcuts when NOT actively typing in a text input field
+			activeInputModes := []string{
+				"origin", "destination", "type", "edit_origin", "edit_destination", "edit_type",
+				"template_name", "template_origin", "template_destination", "template_type", "template_notes",
+				"template_edit", "template_edit_origin", "template_edit_destination", "template_edit_type", "template_edit_notes",
+				"expense_date", "expense_amount", "expense_description", "recurring_date", "convert_to_recurring",
+				"search", "delete_confirm", "template_delete_confirm",
+			}
+
+			isActivelyTyping := false
+			for _, inputMode := range activeInputModes {
+				if m.Mode == inputMode {
+					isActivelyTyping = true
+					break
+				}
+			}
+
+			// Allow shortcuts in "date" and "edit" modes when not actively entering text
+			if !isActivelyTyping && len(msg.Runes) == 1 {
 				switch msg.Runes[0] {
 				case 'u', 'U':
 					if m.ActiveTab == TabTemplates && m.SelectedTemplate >= 0 {

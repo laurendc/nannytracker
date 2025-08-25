@@ -2712,3 +2712,130 @@ func TestHelpSystemKeyHandling(t *testing.T) {
 		}
 	}
 }
+
+func TestTemplateCreationAfterEdit(t *testing.T) {
+	uiModel, cleanup := setupTestUI(t)
+	defer cleanup()
+
+	// First, create an initial template
+	msg := tea.KeyMsg{Type: tea.KeyCtrlT}
+	model, _ := uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	uiModel.TextInput.SetValue("Initial Template")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	uiModel.TextInput.SetValue("Initial Origin")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	uiModel.TextInput.SetValue("Initial Destination")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	uiModel.TextInput.SetValue("single")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	uiModel.TextInput.SetValue("Initial notes")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify template was created
+	if len(uiModel.TripTemplates) != 1 {
+		t.Fatalf("Expected 1 template, got %d", len(uiModel.TripTemplates))
+	}
+
+	// Switch to templates tab and select the template
+	uiModel.ActiveTab = TabTemplates
+	uiModel.SelectedTemplate = 0
+
+	// Now edit the template (this sets EditIndex to 0)
+	msg = tea.KeyMsg{Type: tea.KeyCtrlE}
+	model, _ = uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	if uiModel.EditIndex != 0 {
+		t.Errorf("Expected EditIndex to be 0 when editing template, got %d", uiModel.EditIndex)
+	}
+
+	// Cancel editing by pressing Esc (to simulate user canceling edit)
+	msg = tea.KeyMsg{Type: tea.KeyEsc}
+	model, _ = uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	// This is the bug scenario: EditIndex is still 0, not reset to -1
+	// Now try to create a new template - this should work properly
+	msg = tea.KeyMsg{Type: tea.KeyCtrlT}
+	model, _ = uiModel.Update(msg)
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_name" {
+		t.Errorf("Expected mode to be 'template_name', got '%s'", uiModel.Mode)
+	}
+
+	// Verify EditIndex was reset to -1 for new template creation
+	if uiModel.EditIndex != -1 {
+		t.Errorf("Expected EditIndex to be -1 for new template creation, got %d", uiModel.EditIndex)
+	}
+
+	// Enter template name for the bug reproduction scenario
+	uiModel.TextInput.SetValue("CVS North Arlington -> Home")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_origin" {
+		t.Errorf("Expected mode to be 'template_origin', got '%s'", uiModel.Mode)
+	}
+
+	// Enter origin
+	uiModel.TextInput.SetValue("CVS, 585 Ridge Road, North Arlington, NJ")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	if uiModel.Mode != "template_destination" {
+		t.Errorf("Expected mode to be 'template_destination', got '%s'", uiModel.Mode)
+	}
+
+	// This is where the bug would occur - destination entry not progressing
+	uiModel.TextInput.SetValue("296 Carmita Avenue, Rutherford, NJ")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// This should transition to template_type mode
+	if uiModel.Mode != "template_type" {
+		t.Errorf("Expected mode to be 'template_type' after entering destination, got '%s'", uiModel.Mode)
+	}
+
+	// Verify the destination was saved
+	if uiModel.CurrentTemplate.Destination != "296 Carmita Avenue, Rutherford, NJ" {
+		t.Errorf("Expected destination to be saved, got '%s'", uiModel.CurrentTemplate.Destination)
+	}
+
+	// Complete the template
+	uiModel.TextInput.SetValue("single")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	uiModel.TextInput.SetValue("CVS to home commute")
+	model, _ = uiModel.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	uiModel = model.(*Model)
+
+	// Verify second template was created
+	if len(uiModel.TripTemplates) != 2 {
+		t.Errorf("Expected 2 templates, got %d", len(uiModel.TripTemplates))
+	}
+
+	// Verify the second template has correct values
+	secondTemplate := uiModel.TripTemplates[1]
+	if secondTemplate.Name != "CVS North Arlington -> Home" {
+		t.Errorf("Expected name 'CVS North Arlington -> Home', got '%s'", secondTemplate.Name)
+	}
+	if secondTemplate.Origin != "CVS, 585 Ridge Road, North Arlington, NJ" {
+		t.Errorf("Expected origin 'CVS, 585 Ridge Road, North Arlington, NJ', got '%s'", secondTemplate.Origin)
+	}
+	if secondTemplate.Destination != "296 Carmita Avenue, Rutherford, NJ" {
+		t.Errorf("Expected destination '296 Carmita Avenue, Rutherford, NJ', got '%s'", secondTemplate.Destination)
+	}
+}
